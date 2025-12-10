@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  birthdate DateTime?
+  password  String?
+  room      String?
+  maxHours  Int?     @map("max_hours")
+  departmentId String? @map("department_id")
+  department Department? @relation(fields: [departmentId], references: [id])
+  subjects  Subject[]
+  schedules Schedule[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("teachers")
+}
+
+model Subject {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  credits   Int       @map("credit")
+  theoryHours Int?    @map("theory_hours")
+  practiceHours Int?  @map("practice_hours")
+  departmentId String? @map("department_id")
+  department Department? @relation(fields: [departmentId], references: [id])
+  teacherId String?
+  teacher   Teacher?  @relation(fields: [teacherId], references: [id])
+  classSubjects ClassSubject[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?  @updatedAt
+
+  @@map("subjects")
+}
+
+model Room {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  capacity  Int
+  type      String?
+  schedules Schedule[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?   @updatedAt
+
+  @@map("rooms")
+}
+
+
+
+model Schedule {
+  id        String   @id @default(cuid())
+  teacherId String?   @map("teacher_id")
+  teacher   Teacher?  @relation(fields: [teacherId], references: [id])
+  roomId    String?   @map("room_id")
+  room      Room?     @relation(fields: [roomId], references: [id])
+  subjectId String?   @map("subject_id")
+  dayOfWeek Int?      @map("day_of_week")
+  startTime String?   @map("start_period")
+  endTime   String?   @map("end_period")
+  term      String?
+  classLevel String?  @map("class_level")
+  classLevelId String? @map("class_level_id") // Added for relation if needed, or just keep string
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("schedule")
+}
+
+model User {
+  id       Int     @id @default(autoincrement())
+  username String  @unique
+  name     String
+  image    String? @db.LongText
+  password String?
+  role     String?
+
+  @@map("users")
+}
+
+model Student {
+  id   String @id @default(cuid())
+  name String
+  level String?
+  birthdate DateTime?
+  password  String?
+  departmentId String? @map("department_id")
+  department Department? @relation(fields: [departmentId], references: [id])
+  
+  @@map("students")
+}
+
+model Department {
+  id   String @id @default(cuid())
+  name String
+  teachers Teacher[]
+  students Student[]
+  subjects Subject[]
+  classLevels ClassLevel[]
+
+  @@map("departments")
+}
+
+model ClassLevel {
+  id   String @id @default(cuid())
+  name String
+  departmentId String? @map("department_id")
+  department Department? @relation(fields: [departmentId], references: [id])
+  classSubjects ClassSubject[]
+
+  @@map("class_levels")
+}
+
+model ClassSubject {
+  id   String @id @default(cuid())
+  name String?
+  subjectId String? @map("subject_id")
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+  classLevelId String? @map("class_level_id")
+  classLevel ClassLevel? @relation(fields: [classLevelId], references: [id])
+  department String? // Legacy field?
+
+  @@map("class_subjects")
+}
