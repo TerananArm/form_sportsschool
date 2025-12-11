@@ -66,8 +66,10 @@ export default function CurriculumPage() {
             });
             const result = await res.json();
             if (result.recommendedIds) {
-                setRecommendedIds(new Set(result.recommendedIds));
-                setConfirmConfig({ isOpen: true, title: t('aiRecommendSuccess'), message: `${t('aiRecommendMessage')} (${result.recommendedIds.length} ${t('unitSubject')})`, type: 'success' });
+                // Ensure IDs are numbers (DB uses Int)
+                const recIds = result.recommendedIds.map(id => Number(id));
+                setRecommendedIds(new Set(recIds));
+                setConfirmConfig({ isOpen: true, title: t('aiRecommendSuccess'), message: `${t('aiRecommendMessage')} (${recIds.length} ${t('unitSubject')})`, type: 'success' });
             }
         } catch (e) {
             setConfirmConfig({ isOpen: true, title: t('error'), message: t('aiRecommendError'), type: 'danger' });
@@ -174,14 +176,6 @@ export default function CurriculumPage() {
                             </div>
 
                             <div className="flex gap-3">
-                                <button
-                                    onClick={handleAskAI}
-                                    disabled={loading}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-all active:scale-95"
-                                >
-                                    {loading ? <Loader2 className="animate-spin" size={16} /> : <Wand2 size={16} />}
-                                    {t('askAI')}
-                                </button>
                                 <div className="text-lg font-black text-red-500 px-3 py-1.5 rounded-xl border border-red-500/30 backdrop-blur-md">
                                     {t('selectedCount')} {checkedIds.size} {t('unitSubject')}
                                 </div>
@@ -190,45 +184,57 @@ export default function CurriculumPage() {
 
                         <div className={`max-h-[500px] overflow-y-auto custom-scrollbar pr-4 space-y-2 border p-4 rounded-[20px] ${isDarkMode ? 'bg-slate-900/40 border-white/10' : 'bg-white/40 border-white/40'}`}>
                             {loading && <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-red-500" size={32} /></div>}
-                            {!loading && subjects
-                                .sort((a, b) => {
-                                    const aRec = recommendedIds.has(a.id) ? 1 : 0;
-                                    const bRec = recommendedIds.has(b.id) ? 1 : 0;
-                                    return bRec - aRec; // Recommended first
-                                })
-                                .map(s => {
-                                    const isChecked = checkedIds.has(s.id);
-                                    const isRecommended = recommendedIds.has(s.id);
-                                    return (
-                                        <div
-                                            key={s.id}
-                                            onClick={() => toggle(s.id)}
-                                            className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 
-                                        ${isChecked
-                                                    ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-900/30 shadow-md'
-                                                    : `border-transparent hover:bg-white/40 ${isDarkMode ? 'hover:bg-white/10' : ''}`
-                                                }
-                                        ${isRecommended ? 'ring-2 ring-violet-500/50 bg-violet-500/5' : ''}
-                                    `}
-                                        >
-                                            <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150 shrink-0 ${isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-400'}`}>
-                                                {isChecked && <Check size={16} className="text-white" />}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`font-mono text-base font-bold ${isChecked ? 'text-emerald-800 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>{s.code}</div>
-                                                    {isRecommended && (
-                                                        <span className="px-2 py-0.5 rounded-md bg-violet-500 text-white text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
-                                                            <Wand2 size={10} /> {t('aiRecommended')}
-                                                        </span>
-                                                    )}
+                            {!loading && (() => {
+                                const targetDept = options.depts?.find(d => d.name === dept);
+                                const targetDeptId = targetDept ? targetDept.id : null;
+
+                                return subjects
+                                    .sort((a, b) => {
+                                        // 1. Same Department
+                                        const aIsDept = a.departmentId === targetDeptId ? 1 : 0;
+                                        const bIsDept = b.departmentId === targetDeptId ? 1 : 0;
+                                        if (bIsDept !== aIsDept) return bIsDept - aIsDept;
+
+                                        return 0;
+                                    })
+                                    .map(s => {
+                                        const isChecked = checkedIds.has(s.id);
+                                        const isDeptSubject = s.departmentId === targetDeptId;
+
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                onClick={() => toggle(s.id)}
+                                                className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 
+                                            ${isChecked
+                                                        ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-900/30 shadow-md'
+                                                        : isDeptSubject
+                                                            ? `border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800 hover:bg-blue-100` // Dept Highlight
+                                                            : `border-transparent hover:bg-white/40 ${isDarkMode ? 'hover:bg-white/10' : ''}`
+                                                    }
+                                        `}
+                                            >
+                                                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150 shrink-0 ${isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-400'}`}>
+                                                    {isChecked && <Check size={16} className="text-white" />}
                                                 </div>
-                                                <div className={`font-bold text-lg ${isChecked ? 'text-emerald-950 dark:text-emerald-100' : 'text-slate-900 dark:text-white'}`}>{s.name}</div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`font-mono text-base font-bold ${isChecked ? 'text-emerald-800 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>{s.code}</div>
+
+                                                        {/* Department Badge */}
+                                                        {isDeptSubject && (
+                                                            <span className="px-2 py-0.5 rounded-md bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
+                                                                <BookOpen size={10} /> วิชาแผนก
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`font-bold text-lg ${isChecked ? 'text-emerald-950 dark:text-emerald-100' : 'text-slate-900 dark:text-white'}`}>{s.name}</div>
+                                                </div>
+                                                <div className={`text-sm font-bold w-16 text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{s.credit} {t('credit')}</div>
                                             </div>
-                                            <div className={`text-sm font-bold w-16 text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{s.credit} {t('credit')}</div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    });
+                            })()}
 
                             {!loading && subjects.length === 0 && (
                                 <div className="p-16 text-center">

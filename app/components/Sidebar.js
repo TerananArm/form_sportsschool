@@ -24,13 +24,13 @@ export default function Sidebar() {
   const allMenuItems = [
     { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'teacher', 'student'] },
     { name: t('schedule'), icon: Calendar, path: '/dashboard/schedule', roles: ['admin', 'teacher', 'student'] },
-    { name: t('rooms'), icon: DoorOpen, path: '/dashboard/rooms', roles: ['admin', 'teacher', 'student'] },
-    { name: t('students'), icon: Users, path: '/dashboard/students', roles: ['admin', 'teacher'] },
-    { name: t('teachers'), icon: UserSquare2, path: '/dashboard/teachers', roles: ['admin', 'teacher'] },
-    { name: t('subjects'), icon: BookOpen, path: '/dashboard/subjects', roles: ['admin', 'teacher', 'student'] },
+    { name: t('rooms'), icon: DoorOpen, path: '/dashboard/rooms', roles: ['admin'] },
+    { name: t('students'), icon: Users, path: '/dashboard/students', roles: ['admin'] },
+    { name: t('teachers'), icon: UserSquare2, path: '/dashboard/teachers', roles: ['admin'] },
+    { name: t('subjects'), icon: BookOpen, path: '/dashboard/subjects', roles: ['admin'] },
     { name: t('departments'), icon: Building2, path: '/dashboard/departments', roles: ['admin'] },
     { name: t('levels'), icon: GraduationCap, path: '/dashboard/levels', roles: ['admin'] },
-    { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum', roles: ['admin', 'teacher'] },
+    { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum', roles: ['admin'] },
     { name: t('users'), icon: UserCog, path: '/dashboard/users', roles: ['admin'] },
   ];
 

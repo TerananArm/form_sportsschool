@@ -771,7 +771,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                                                 ))}
                                                 <td className="px-4 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                        {(role === 'admin' || role === 'teacher') && (
+                                                        {role === 'admin' && (
                                                             <button onClick={() => handleEdit(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-white text-slate-600 hover:shadow-sm'}`}><Pencil size={16} /></button>
                                                         )}
                                                         {role === 'admin' && (

@@ -2,6 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // Import useSession
 import { Save, RotateCcw, ArrowLeft } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext'; // ✅ Import useLanguage
@@ -15,7 +16,18 @@ export default function DynamicPage() {
     const slug = params.menu;
     const editId = searchParams.get('id');
     const { isDarkMode } = useTheme();
-    const { t, language } = useLanguage(); // ✅ Use translation hook
+    const { t, language } = useLanguage();
+    const { data: session } = useSession(); // Get session
+    const role = session?.user?.role;
+
+    // Redirect if Student or Teacher tries to access Admin Forms
+    useEffect(() => {
+        if (role === 'student' || role === 'teacher') {
+            // Students/Teachers should never see this generic add/edit form page.
+            // They only access /dashboard/schedule.
+            router.replace('/dashboard/schedule');
+        }
+    }, [role, router]);
 
     const [formData, setFormData] = useState({});
     const [isLoading, setIsLoading] = useState(false);

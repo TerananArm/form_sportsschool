@@ -170,7 +170,7 @@ export default function PrintPage() {
                         }}
                     >
                         {/* Header Section */}
-                        <div className="flex border border-black mb-1">
+                        <div className="flex border border-black mb-6">
                             {/* Left: Info */}
                             <div className="w-[35%] p-4 border-r border-black flex flex-col justify-between relative">
                                 <div className="text-center mb-4">

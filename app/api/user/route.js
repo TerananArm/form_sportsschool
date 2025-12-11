@@ -42,14 +42,20 @@ export async function GET(request) {
             const [rows] = await db.execute('SELECT id, username, name, image FROM users WHERE id = ?', [id]);
             user = rows[0];
         } else if (role === 'student') {
-            const [rows] = await db.execute('SELECT id, name FROM students WHERE id = ?', [id]);
+            const [rows] = await db.execute(`
+                SELECT s.id, s.name, cl.name as level, d.name as department_name 
+                FROM students s 
+                LEFT JOIN departments d ON s.departmentId = d.id 
+                LEFT JOIN class_levels cl ON s.classLevelId = cl.id
+                WHERE s.id = ?`, [id]);
             user = rows[0];
-            // Students might not have image column yet? Schema has no image for Student.
-            // Profile page expects image. We can return null or default.
         } else if (role === 'teacher') {
-            const [rows] = await db.execute('SELECT id, name, email FROM teachers WHERE id = ?', [id]);
+            const [rows] = await db.execute(`
+                SELECT t.id, t.name, d.name as department_name 
+                FROM teachers t 
+                LEFT JOIN departments d ON t.departmentId = d.id 
+                WHERE t.id = ?`, [id]);
             user = rows[0];
-            // Teachers don't have image column in schema either?
         }
 
         if (!user) {

@@ -16,12 +16,34 @@ export async function GET(request) {
         // กรณีที่ 1: ดึงข้อมูลรายการเดียว (สำหรับแก้ไข)
         if (id) {
             switch (type) {
-                case 'students': query = 'SELECT s.*, d.name as department FROM students s LEFT JOIN departments d ON s.department_id = d.id WHERE s.id = ?'; break;
-                case 'teachers': query = 'SELECT t.*, d.name as department FROM teachers t LEFT JOIN departments d ON t.department_id = d.id WHERE t.id = ?'; break;
-                case 'subjects': query = 'SELECT s.*, d.name as department FROM subjects s LEFT JOIN departments d ON s.department_id = d.id WHERE s.code = ?'; break;
-                case 'rooms': query = 'SELECT * FROM rooms WHERE name = ?'; break;
-                case 'departments': query = 'SELECT * FROM departments WHERE id = ?'; break;
-                case 'users': query = 'SELECT * FROM users WHERE username = ?'; break;
+                case 'students':
+                    query = `
+                        SELECT s.id, s.studentId, s.name, d.name as department, cl.name as level, s.birthDate as birthdate 
+                        FROM students s 
+                        LEFT JOIN departments d ON s.departmentId = d.id 
+                        LEFT JOIN class_levels cl ON s.classLevelId = cl.id
+                        WHERE s.id = ?
+                    `;
+                    break;
+                case 'teachers':
+                    query = `
+                        SELECT t.id, t.teacherId, t.name, d.name as department, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate
+                        FROM teachers t 
+                        LEFT JOIN departments d ON t.departmentId = d.id 
+                        WHERE t.id = ?
+                    `;
+                    break;
+                case 'subjects':
+                    query = `
+                        SELECT s.id, s.code, s.name, d.name as department, s.credit, s.theoryHours as theory, s.practiceHours as practice
+                        FROM subjects s 
+                        LEFT JOIN departments d ON s.departmentId = d.id 
+                        WHERE s.code = ?
+                    `;
+                    break;
+                case 'rooms': query = 'SELECT name, type, capacity FROM rooms WHERE name = ?'; break;
+                case 'departments': query = 'SELECT id, name FROM departments WHERE id = ?'; break;
+                case 'users': query = 'SELECT username, name, role FROM users WHERE username = ?'; break;
             }
             params = [id];
         }
@@ -73,11 +95,12 @@ export async function GET(request) {
                     break;
                 case 'curriculum':
                     query = `
-                        SELECT cs.id, cl.name as level, s.code, s.name as subject_name 
+                        SELECT cs.id, cl.name as level, d.name as department, s.code, s.name as subject_name 
                         FROM class_subjects cs 
                         JOIN subjects s ON cs.subjectId = s.id 
                         JOIN class_levels cl ON cs.classLevelId = cl.id
-                        ORDER BY cl.name
+                        LEFT JOIN departments d ON cl.departmentId = d.id
+                        ORDER BY d.name, cl.name
                     `;
                     break;
                 case 'schedule':

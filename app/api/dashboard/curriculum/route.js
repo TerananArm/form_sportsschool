@@ -39,7 +39,7 @@ export async function GET(request) {
 
         // Get all subjects with enrollment status for THIS class level
         let sql = `
-            SELECT s.id, s.code, s.name, s.credit,
+            SELECT s.id, s.code, s.name, s.credit, s.departmentId,
                    CASE WHEN cs.subjectId IS NOT NULL THEN 1 ELSE 0 END as is_enrolled
             FROM subjects s
             LEFT JOIN class_subjects cs ON s.id = cs.subjectId AND cs.classLevelId = ?

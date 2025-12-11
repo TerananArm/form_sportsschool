@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { generateDeterministicSchedule } from '@/app/lib/fallback-scheduler';
 
 function cleanJson(text) {
     return text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -22,25 +23,21 @@ export async function POST(request) {
 
         const { term, department, classLevel } = await request.json();
 
-        // 0. Get Class Level ID
-        const [clRows] = await db.execute('SELECT id FROM class_levels WHERE name = ?', [classLevel]);
-        if (clRows.length === 0) {
-            return NextResponse.json({ message: 'ไม่พบระดับชั้นนี้ในระบบ' }, { status: 404 });
-        }
-        const classLevelId = clRows[0].id;
-
-        // Get Department ID
+        // 1. Get Department ID
         const [deptRows] = await db.execute('SELECT id FROM departments WHERE name = ?', [department]);
         let departmentId = null;
         if (deptRows.length > 0) {
             departmentId = deptRows[0].id;
         } else {
-            // Fallback or error? Schedule requires departmentId? 
-            // Step 1066 says departmentId NO NULL. So we MUST have it.
-            // But existing code might not have department provided correctly?
-            // Assuming department name is correct.
             return NextResponse.json({ message: 'ไม่พบแผนกวิชานี้' }, { status: 404 });
         }
+
+        // 2. Get Class Level ID (Filtered by Department)
+        const [clRows] = await db.execute('SELECT id FROM class_levels WHERE name = ? AND departmentId = ?', [classLevel, departmentId]);
+        if (clRows.length === 0) {
+            return NextResponse.json({ message: `ไม่พบระดับชั้น ${classLevel} ในแผนก ${department}` }, { status: 404 });
+        }
+        const classLevelId = clRows[0].id;
 
         // 1. Fetch Subjects for this Class Level
         let sqlSubjects = `
@@ -52,6 +49,12 @@ export async function POST(request) {
             WHERE cs.classLevelId = ?
         `;
         const [subjects] = await db.execute(sqlSubjects, [classLevelId]);
+
+        // Shuffle subjects to prevent identical schedules across classes
+        for (let i = subjects.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [subjects[i], subjects[j]] = [subjects[j], subjects[i]];
+        }
 
         if (subjects.length === 0) {
             return NextResponse.json({ message: 'ไม่พบรายวิชาที่ลงทะเบียนไว้ในหลักสูตร' }, { status: 400 });
@@ -80,8 +83,10 @@ export async function POST(request) {
             Constraints & Rules:
             1. **LUNCH BREAK**: Period 5 (12:00-13:00) IS RESERVED. DO NOT SCHEDULE ANYTHING.
             2. **VALID PERIODS**: Use integers 1 to 10. (Morning: 1-4, Afternoon: 6-9/10).
-            3. **MORNING PRIORITY**: Fill morning periods (1-4) FIRST before using afternoon periods (6-10). This is important.
-            4. **FULL WEEK**: Schedule classes from Monday to Friday. No empty days.
+            3. **MORNING PRIORITY**: STRICTLY fill morning periods (1-4) FIRST. Ideally, 80% of classes should start in the morning. Use Afternoon (6-10) ONLY when morning is full.
+            4. **FULL WEEK & BALANCED**: 
+               - **NO EMPTY DAYS**: Every day (Mon-Fri) MUST have at least 4 periods of class.
+               - **DISTRIBUTE**: Spread subjects evenly across the week. Do not stack everything on Monday/Tuesday.
             5. **CONSECUTIVE BLOCKS**: 
                - If a subject has practiceHours > 0, it MUST be a single block of (theoryHours + practiceHours).
                - If practiceHours > 0, assign a Room with type 'Lab' or 'Workshop' if available.
@@ -118,6 +123,20 @@ export async function POST(request) {
                 text = response.text();
             } catch (apiError) {
                 console.warn(`Attempt ${attempts} API Error:`, apiError.message);
+
+                // Fallback Logic: If Quota Exceeded (429) or Service Unavailable (503)
+                if (apiError.message.includes('429') || apiError.message.includes('Quota') || apiError.message.includes('503')) {
+                    console.log("⚠️ Fallback Triggered: Switching to Deterministic Scheduler...");
+                    try {
+                        scheduleJson = await generateDeterministicSchedule(subjects, rooms, teachers, term, classLevelId, db);
+                        console.log(`✅ Fallback generated ${scheduleJson.length} slots.`);
+                        break; // Exit loop, we have a schedule
+                    } catch (fallbackError) {
+                        console.error("Fallback Failed:", fallbackError);
+                        throw fallbackError;
+                    }
+                }
+
                 if (attempts === maxAttempts) throw apiError;
                 await new Promise(r => setTimeout(r, 2000));
                 continue;

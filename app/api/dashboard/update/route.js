@@ -21,19 +21,19 @@ export async function PUT(request) {
         switch (type) {
             case 'students':
                 const deptIdStd = await getDeptId(data.department);
-                sql = 'UPDATE students SET name=?, birthdate=?, department_id=?, level=?, updatedAt=? WHERE id=?';
-                params = [v(data.name), v(data.birthdate), deptIdStd, v(data.level), new Date(), id];
+                sql = 'UPDATE students SET name=?, birthDate=?, departmentId=?, updatedAt=? WHERE id=?';
+                params = [v(data.name), v(data.birthdate), deptIdStd, new Date(), id];
                 break;
 
             case 'teachers':
                 const deptIdTch = await getDeptId(data.department);
-                sql = 'UPDATE teachers SET name=?, department_id=?, room=?, max_hours=?, birthdate=?, updatedAt=? WHERE id=?';
+                sql = 'UPDATE teachers SET name=?, departmentId=?, officeRoom=?, maxHoursPerWeek=?, birthDate=?, updatedAt=? WHERE id=?';
                 params = [v(data.name), deptIdTch, v(data.room), v(data.max_hours), v(data.birthdate), new Date(), id];
                 break;
 
             case 'subjects':
                 const deptIdSub = await getDeptId(data.department);
-                sql = 'UPDATE subjects SET name=?, department_id=?, credit=?, theory_hours=?, practice_hours=?, updatedAt=? WHERE code=?';
+                sql = 'UPDATE subjects SET name=?, departmentId=?, credit=?, theoryHours=?, practiceHours=?, updatedAt=? WHERE code=?';
                 params = [v(data.name), deptIdSub, v(data.credit), v(data.theory), v(data.practice), new Date(), id];
                 break;
 

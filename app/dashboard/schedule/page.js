@@ -6,18 +6,25 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSound } from '../../context/SoundContext';
 import {
     Plus, Wand2, Printer, FileSpreadsheet, Trash2,
-    RotateCcw, ChevronDown, Filter, CalendarCheck, ArrowLeft, Loader2, Search, X
+    RotateCcw, ChevronDown, Filter, CalendarCheck, ArrowLeft, Loader2, Search, X, CalendarDays
 } from 'lucide-react';
 import ConfirmModal from '../../components/ConfirmModal';
 import AgentProcess from '../../components/AgentProcess';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import { useSession } from 'next-auth/react';
+import * as XLSX from 'xlsx';
 
 export default function SchedulePage() {
     const { isDarkMode } = useTheme();
     const { t } = useLanguage();
     const { play } = useSound();
     const router = useRouter();
+    const { data: session } = useSession();
+    const role = session?.user?.role || 'student';
+    const userId = session?.user?.id;
+    const isViewOnly = role === 'student' || role === 'teacher'; // Both see simplified view
+    const { language } = useLanguage();
 
     // States
     const currentYear = new Date().getFullYear() + 543;
@@ -42,13 +49,62 @@ export default function SchedulePage() {
 
     // Options
     const [options, setOptions] = useState({
-        terms: [`1/${currentYear}`, `2/${currentYear}`, `1/${currentYear + 1}`],
+        terms: [`1/${currentYear - 1}`, `2/${currentYear - 1}`, `1/${currentYear}`, `2/${currentYear}`, `1/${currentYear + 1}`],
         depts: [],
         levels: [],
         teachers: [],
         subjects: [],
         rooms: []
     });
+
+    // Auto-Set Filters for Student/Teacher (Moved here to access options)
+    useEffect(() => {
+        const setupMySchedule = async () => {
+            if (!session?.user) return;
+            if (role === 'student') {
+                try {
+                    const res = await fetch('/api/user');
+                    const userData = await res.json();
+
+                    if (userData.department_name && userData.level) {
+                        setFilters(prev => ({ ...prev, department: userData.department_name, classLevel: userData.level }));
+                    } else if (options.levels.length > 0) {
+                        // Fallback: Auto-select first available level if no student record found (e.g. Admin view)
+                        // Also try to find department for this level
+                        const fallbackLevel = options.levels[0];
+                        setFilters(prev => ({
+                            ...prev,
+                            classLevel: fallbackLevel.level,
+                            department: fallbackLevel.department_name || options.depts[0]?.name || ''
+                        }));
+                    }
+                } catch (e) {
+                    console.error("Failed to load student info", e);
+                    if (options.levels.length > 0) {
+                        const fallbackLevel = options.levels[0];
+                        setFilters(prev => ({
+                            ...prev,
+                            classLevel: fallbackLevel.level,
+                            department: fallbackLevel.department_name || ''
+                        }));
+                    }
+                }
+            } else if (role === 'teacher') {
+                try {
+                    setFilters(prev => ({ ...prev, teacher: userId }));
+                    const res = await fetch('/api/user');
+                    const userData = await res.json();
+                    if (userData.department_name) {
+                        setFilters(prev => ({ ...prev, teacher: userId, department: userData.department_name }));
+                    }
+                } catch (e) {
+                    console.error("Failed to load teacher info", e);
+                    setFilters(prev => ({ ...prev, teacher: userId }));
+                }
+            }
+        };
+        setupMySchedule();
+    }, [session, role, userId, options.levels]);
 
     // Modal Control
     const [showManualModal, setShowManualModal] = useState(false);
@@ -100,14 +156,18 @@ export default function SchedulePage() {
 
     // Fetch Schedule Trigger
     useEffect(() => {
-        if (filters.department && filters.classLevel) {
+        const isStudentReady = role === 'student' && filters.classLevel;
+        const isTeacherReady = role === 'teacher' && filters.teacher;
+        const isAdminReady = role === 'admin' && filters.department && filters.classLevel;
+
+        if (filters.term && (isStudentReady || isTeacherReady || isAdminReady)) {
             fetchSchedule();
             setShowTable(true);
         } else {
-            setShowTable(false);
-            setScheduleData({});
+            // Don't clear immediately if just switching tabs, but ok for now
+            if (!scheduleData.length) setShowTable(false);
         }
-    }, [filters.department, filters.classLevel, filters.term, filters.teacher]);
+    }, [filters.department, filters.classLevel, filters.term, filters.teacher, role]);
 
     const fetchSchedule = async () => {
         setLoading(true);
@@ -277,8 +337,8 @@ export default function SchedulePage() {
             const levelName = level.level;
             const departmentName = level.department_name || '';
 
-            // Check if class has rules
-            const hasRules = allCurriculum.some(c => c.level === levelName);
+            // Check if class has rules (Strict Check: Level + Department)
+            const hasRules = allCurriculum.some(c => c.level === levelName && c.department === departmentName);
 
             if (!hasRules) {
                 skippedCount++;
@@ -331,10 +391,12 @@ export default function SchedulePage() {
         setLoadingMessage('');
 
         // Construct detailed message
-        let message = `${t('autoGenSuccess')}: ${successCount}\n${t('autoGenFail')}: ${failCount}\n${t('autoGenSkipped')}: ${skippedCount}`;
-        if (failures.length > 0) {
-            message += `\n\nDetails:\n- ${failures.join('\n- ')}`;
-        }
+        // Construct simple message (User request: Only show success)
+        let message = `${t('autoGenSuccess')}: ${successCount}`;
+
+        // Only show fail/skip counts if there are any, but NO details to avoid overflow
+        if (failCount > 0) message += `\n${t('autoGenFail')}: ${failCount}`;
+        if (skippedCount > 0) message += `\n${t('autoGenSkipped')}: ${skippedCount}`;
 
         setConfirmConfig({
             isOpen: true,
@@ -372,6 +434,65 @@ export default function SchedulePage() {
         } catch (error) {
             setConfirmConfig({ isOpen: true, title: 'ข้อผิดพลาด', message: 'การเชื่อมต่อขัดข้อง', type: 'danger' });
         } finally {
+            setLoading(false);
+        }
+    };
+
+    // Excel Export Logic
+    const handleExportExcel = () => {
+        if (!scheduleData || Object.keys(scheduleData).length === 0) {
+            setConfirmConfig({ isOpen: true, title: t('error'), message: 'ไม่มีข้อมูลตารางเรียน', type: 'warning' });
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        // Prepare headers (Time + Periods)
+        const wsData = [
+            ['Time', ...periods.map(p => `Period ${p}`)],
+        ];
+
+        // Map data
+        days.forEach(day => {
+            const row = [day];
+            periods.forEach(p => {
+                const cell = scheduleData[day]?.[p];
+                if (cell && cell !== 'skip') {
+                    // Format: "Subject Name (Code) - Room"
+                    // Or simpler: "Code Name"
+                    const text = `${cell.subject_code} ${cell.subject_name}`;
+                    row.push(text);
+                } else if (!cell) {
+                    row.push('-');
+                } else {
+                    row.push(''); // Skip merged cells if handled by merging, otherwise empty
+                }
+            });
+            wsData.push(row);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+        // Filename: schedule_LEVEL_TERM.xlsx
+        const filename = `schedule_${filters.classLevel || 'all'}_${(filters.term || '').replace('/', '-')}.xlsx`;
+        XLSX.writeFile(wb, filename);
+    };
+
+    // 5. Drag and Drop Handler
+    const handleSubjectMove = async (id, newDay, newStart) => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/dashboard/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'move_slot', data: { id, newDay, newStart } }),
+            });
+            if (res.ok) {
+                fetchSchedule(); // Refresh
+            } else {
+                setConfirmConfig({ isOpen: true, title: 'ย้ายไม่สำเร็จ', message: 'เกิดข้อผิดพลาดในการย้าย', type: 'danger' });
+                setLoading(false);
+            }
+        } catch (e) {
             setLoading(false);
         }
     };
@@ -423,16 +544,44 @@ export default function SchedulePage() {
                 key={`${day}-${period}`}
                 colSpan={colSpan}
                 className={`p-1.5 align-top h-32 transition-colors relative border-r border-dashed border-gray-200 dark:border-white/5`}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!isSubject && period !== 5) {
+                        e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+                    }
+                }}
+                onDragLeave={(e) => {
+                    e.currentTarget.style.background = '';
+                }}
+                onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.background = '';
+                    const data = e.dataTransfer.getData("text/plain");
+                    if (data) {
+                        const { id, duration } = JSON.parse(data);
+                        // Validation: Cannot drop on Period 5 or if extends beyond 10
+                        if (period === 5) return alert("ห้ามลงพักเที่ยง");
+                        if (period + duration - 1 > 10) return alert("เกินเวลาเรียน");
+                        if (period <= 4 && period + duration - 1 >= 5) return alert("วิชาชนพักเที่ยง");
+
+                        handleSubjectMove(id, day, period);
+                    }
+                }}
             >
                 {isSubject && (
                     <div
+                        draggable={role === 'admin'}
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData("text/plain", JSON.stringify({ id: slotId, duration: cell.duration }));
+                            e.dataTransfer.effectAllowed = "move";
+                        }}
                         className={`relative w-full h-full min-h-[100px] p-2 rounded-lg flex flex-col items-center justify-center gap-1 transition-all cursor-pointer group border ${isSelected
                             ? 'ring-2 ring-offset-2 ring-blue-500 z-10'
                             : 'hover:shadow-md'
                             } ${isDarkMode
                                 ? 'bg-[#1e293b] border-white/5 hover:bg-[#253045]'
                                 : 'bg-[#E3F2FD] border-blue-100 hover:bg-[#BBDEFB]'
-                            }`}
+                            } ${role === 'admin' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                         onClick={() => setSelectedIds(prev => {
                             const newSet = new Set(prev);
                             if (newSet.has(slotId)) newSet.delete(slotId);
@@ -508,82 +657,159 @@ export default function SchedulePage() {
                 {/* ... (Toolbar content) ... */}
                 {/* Header & Back Button */}
                 <div className={`flex items-start gap-6 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-black/5'}`}>
-                    <button onClick={() => router.back()} className={`p-4 rounded-full transition-all border backdrop-blur-md shadow-sm active:scale-95 group ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white' : 'bg-white/40 hover:bg-white/60 border-white/40 text-slate-700'}`}>
-                        <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
-                    </button>
+                    {!isViewOnly && (
+                        <button onClick={() => router.back()} className={`p-4 rounded-full transition-all border backdrop-blur-md shadow-sm active:scale-95 group ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white' : 'bg-white/40 hover:bg-white/60 border-white/40 text-slate-700'}`}>
+                            <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+                        </button>
+                    )}
                     <div>
-                        <h1 className={`text-4xl font-black tracking-tight drop-shadow-sm ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>จัดตารางสอน</h1>
-                        <p className={`mt-1 text-lg font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>สร้างและจัดการตารางสอนประจำภาคเรียน</p>
+                        <h1 className={`text-4xl font-black tracking-tight drop-shadow-sm flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                            {isViewOnly ? <><CalendarCheck size={40} /> {t('mySchedule')}</> : t('scheduleTitle')}
+                        </h1>
+                        <p className={`mt-1 text-lg font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                            {isViewOnly ? t('scheduleSubtitle') : t('manageScheduleSubtitle')}
+                        </p>
                     </div>
                 </div>
 
                 <div className={`p-4 mb-6 rounded-2xl border shadow-sm backdrop-blur-xl transition-all relative z-10 ${glassCard}`}>
-                    <div className="flex flex-nowrap gap-3 items-end overflow-x-auto pb-2 no-scrollbar w-full">
-                        {/* Term Selector */}
-                        <div className="flex flex-col gap-1 min-w-[100px]">
-                            <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {t('term')}
-                            </label>
-                            <div className="relative group">
-                                <select
-                                    value={filters.term}
-                                    onChange={(e) => setFilters({ ...filters, term: e.target.value })}
-                                    className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all cursor-pointer w-full ${isDarkMode
-                                        ? 'bg-[#1e293b] border-white/10 text-white hover:border-red-500/50 focus:border-red-500'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:border-red-300 focus:border-red-500 shadow-sm'
-                                        }`}
-                                >
-                                    {options.terms.map(term => (
-                                        <option key={term} value={term}>{term}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-red-500 transition-colors" size={16} />
-                            </div>
-                        </div>
+                    <div className={`flex flex-nowrap items-end overflow-x-auto pb-2 no-scrollbar w-full ${isViewOnly ? 'justify-between' : 'gap-3'}`}>
 
-                        {/* Department Selector */}
-                        <div className="flex flex-col gap-1 min-w-[180px]">
-                            <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {t('department')}
-                            </label>
-                            <div className="relative group">
-                                <select
-                                    value={filters.department}
-                                    onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-                                    className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all cursor-pointer w-full ${isDarkMode
-                                        ? 'bg-[#1e293b] border-white/10 text-white hover:border-red-500/50 focus:border-red-500'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:border-red-300 focus:border-red-500 shadow-sm'
-                                        }`}
-                                >
-                                    <option value="">{t('select')}</option>
-                                    {options.depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-red-500 transition-colors" size={16} />
+                        {/* Static Info for Student/Teacher */}
+                        {isViewOnly && (
+                            <div className="flex flex-col gap-1 min-w-[200px] mr-4">
+                                <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {role === 'teacher' ? t('teacher') : `${t('classLevel')} / ${t('department')}`}
+                                </label>
+                                <div className="flex flex-col">
+                                    <div className={`text-3xl font-black ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                        {role === 'teacher'
+                                            ? (session?.user?.name || t('teacher'))
+                                            : (filters.classLevel || '-')
+                                        }
+                                    </div>
+                                    <div className={`text-sm font-semibold opacity-70 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                        {filters.department || '-'}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Class Level Selector */}
-                        <div className="flex flex-col gap-1 min-w-[150px]">
-                            <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {t('classLevel')}
-                            </label>
-                            <div className="relative group">
-                                <select
-                                    value={filters.classLevel}
-                                    onChange={(e) => setFilters({ ...filters, classLevel: e.target.value })}
-                                    className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all cursor-pointer w-full ${isDarkMode
-                                        ? 'bg-[#1e293b] border-white/10 text-white hover:border-red-500/50 focus:border-red-500'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:border-red-300 focus:border-red-500 shadow-sm'
-                                        }`}
+                        {/* Student Toolbar Actions (Term + Buttons) */}
+                        {isViewOnly && (
+                            <div className="flex items-center gap-3 ml-auto">
+                                {/* Term Selector (Pill Style) */}
+                                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all ${isDarkMode ? 'bg-[#1e293b] border-white/10' : 'bg-white border-slate-200'}`}>
+                                    <CalendarDays size={18} className={isDarkMode ? 'text-white/60' : 'text-slate-400'} />
+                                    <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                        {t('termLabel')}
+                                    </span>
+                                    <div className="relative group">
+                                        <select
+                                            value={filters.term}
+                                            onChange={(e) => setFilters({ ...filters, term: e.target.value })}
+                                            className={`appearance-none pl-2 pr-8 py-1 rounded-lg text-sm font-black outline-none bg-transparent cursor-pointer transition-colors ${isViewOnly ? 'text-red-500 hover:text-red-600' : (isDarkMode ? 'text-white' : 'text-slate-700')}`}
+                                        >
+                                            {options.terms.map(term => (
+                                                <option key={term} value={term} className={isDarkMode ? 'bg-slate-800' : 'bg-white'}>{term}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 text-red-500/50 pointer-events-none group-hover:text-red-500 transition-colors" size={14} />
+                                    </div>
+                                </div>
+
+                                {/* Print Button */}
+                                <button
+                                    onClick={async () => {
+                                        const teacherName = options.teachers?.find(t => t.id == filters.teacher)?.name || '';
+                                        let curriculumSubjects = [];
+                                        if (filters.classLevel) {
+                                            try {
+                                                const res = await fetch(`/api/dashboard/data?type=curriculum`);
+                                                const allCurriculum = await res.json();
+                                                curriculumSubjects = allCurriculum.filter(c => c.level === filters.classLevel).map(c => ({
+                                                    code: c.code,
+                                                    name: c.subject_name,
+                                                    ...options.subjects.find(s => s.code === c.code)
+                                                }));
+                                            } catch (e) { console.error("Failed to fetch curriculum for print", e); }
+                                        }
+                                        const printData = {
+                                            scheduleData,
+                                            filters,
+                                            subjects: curriculumSubjects.length > 0 ? curriculumSubjects : (options.subjects || []),
+                                            studentInfo: { ...filters, teacherName }
+                                        };
+                                        localStorage.setItem('printData', JSON.stringify(printData));
+                                        window.open('/print', '_blank');
+                                    }}
+                                    className={`h-[42px] px-4 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2 hover:scale-105 active:scale-95 border ${isDarkMode ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white border-red-100 text-red-600 hover:bg-red-50'}`}
                                 >
-                                    <option value="">{t('select')}</option>
-                                    {options.levels
-                                        .filter(l => !filters.department || l.department_name === filters.department)
-                                        .map(l => <option key={l.id} value={l.level}>{l.level}</option>)}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-red-500 transition-colors" size={16} />
+                                    <Printer size={18} />
+                                    <span>{t('printBtn')}</span>
+                                </button>
+
+                                {/* Export Excel Button */}
+                                <button
+                                    onClick={handleExportExcel}
+                                    className={`h-[42px] px-4 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2 hover:scale-105 active:scale-95 border ${isDarkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' : 'bg-white border-emerald-100 text-emerald-600 hover:bg-emerald-50'}`}
+                                >
+                                    <FileSpreadsheet size={18} />
+                                    <span>{t('exportExcel')}</span>
+                                </button>
                             </div>
-                        </div>
+                        )}
+
+                        {/* Hide Dropdowns for Student/Teacher */}
+                        {!isViewOnly && (
+                            <>
+                                {/* Department Selector */}
+                                <div className="flex flex-col gap-1 min-w-[180px]">
+                                    <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {t('department')}
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            value={filters.department}
+                                            onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+                                            className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all cursor-pointer w-full ${isDarkMode
+                                                ? 'bg-[#1e293b] border-white/10 text-white hover:border-red-500/50 focus:border-red-500'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-red-300 focus:border-red-500 shadow-sm'
+                                                }`}
+                                            disabled={isViewOnly}
+                                        >
+                                            <option value="">{t('select')}</option>
+                                            {options.depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-red-500 transition-colors" size={16} />
+                                    </div>
+                                </div>
+
+                                {/* Class Level Selector */}
+                                <div className="flex flex-col gap-1 min-w-[150px]">
+                                    <label className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {t('classLevel')}
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            value={filters.classLevel}
+                                            onChange={(e) => setFilters({ ...filters, classLevel: e.target.value })}
+                                            className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium outline-none transition-all cursor-pointer w-full ${isDarkMode
+                                                ? 'bg-[#1e293b] border-white/10 text-white hover:border-red-500/50 focus:border-red-500'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-red-300 focus:border-red-500 shadow-sm'
+                                                }`}
+                                            disabled={isViewOnly}
+                                        >
+                                            <option value="">{t('select')}</option>
+                                            {options.levels
+                                                .filter(l => !filters.department || l.department_name === filters.department)
+                                                .map(l => <option key={l.id} value={l.level}>{l.level}</option>)}
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-red-500 transition-colors" size={16} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         {/* Spacer to push buttons to the right if needed, or just keep them close. 
                             User asked for "same line", usually implies a toolbar. 
@@ -591,42 +817,49 @@ export default function SchedulePage() {
                         <div className={`w-px h-10 mx-2 self-center ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
 
                         {/* Action Buttons */}
-                        <button
-                            onClick={() => setShowManualModal(true)}
-                            className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[120px] justify-center ${isDarkMode
-                                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white'
-                                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'
-                                }`}
-                        >
-                            <Plus size={18} />
-                            <span className="hidden sm:inline">{t('addSubjectBtn')}</span>
-                        </button>
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => setShowManualModal(true)}
+                                className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[120px] justify-center ${isDarkMode
+                                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'
+                                    }`}
+                            >
+                                <Plus size={18} />
+                                <span className="hidden sm:inline">{t('addSubjectBtn')}</span>
+                            </button>
+                        )}
 
-                        <button
-                            onClick={handleAutoGenerate}
-                            className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[140px] justify-center ${isDarkMode
-                                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-purple-400'
-                                : 'bg-white border-slate-200 hover:bg-slate-50 text-purple-600 shadow-sm'
-                                }`}
-                        >
-                            <Wand2 size={18} />
-                            <span className="hidden sm:inline">{t('autoGenBtn')}</span>
-                        </button>
+                        {role === 'admin' && (
+                            <button
+                                onClick={handleAutoGenerate}
+                                className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[140px] justify-center ${isDarkMode
+                                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-purple-400'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50 text-purple-600 shadow-sm'
+                                    }`}
+                            >
+                                <Wand2 size={18} />
+                                <span className="hidden sm:inline">{t('autoGenBtn')}</span>
+                            </button>
+                        )}
 
                         {/* Clear Table Button */}
-                        <button
-                            onClick={() => setShowClearModal(true)}
-                            className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[120px] justify-center ${isDarkMode
-                                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-red-400'
-                                : 'bg-white border-slate-200 hover:bg-slate-50 text-red-600 shadow-sm'
-                                }`}
-                        >
-                            <RotateCcw size={18} />
-                            <span className="hidden sm:inline">{t('clearTableBtn')}</span>
-                        </button>
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => setShowClearModal(true)}
+                                className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[120px] justify-center ${isDarkMode
+                                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-red-400'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50 text-red-600 shadow-sm'
+                                    }`}
+                            >
+                                <RotateCcw size={18} />
+                                <span className="hidden sm:inline">{t('clearTableBtn')}</span>
+                            </button>
+                        )}
 
                         {/* Delete Selected Button */}
-                        {selectedIds.size > 0 && (
+                        {/* Delete Selected Button */}
+                        {selectedIds.size > 0 && role === 'admin' && (
                             <button
                                 onClick={() => handleBulkDelete()}
                                 className="h-[42px] px-4 bg-red-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-500/30 hover:bg-red-500 transition-all flex items-center gap-2 whitespace-nowrap min-w-[120px] justify-center"
@@ -636,45 +869,74 @@ export default function SchedulePage() {
                             </button>
                         )}
 
-                        <button
-                            onClick={async () => {
-                                const teacherName = options.teachers?.find(t => t.id == filters.teacher)?.name || '';
+                        {role !== 'student' && (
+                            <button
+                                onClick={async () => {
+                                    const teacherName = options.teachers?.find(t => t.id == filters.teacher)?.name || '';
 
-                                // Fetch Curriculum Subjects for this Class Level
-                                let curriculumSubjects = [];
-                                if (filters.classLevel) {
-                                    try {
-                                        const res = await fetch(`/api/dashboard/data?type=curriculum`);
-                                        const allCurriculum = await res.json();
-                                        // Filter for current class level
-                                        curriculumSubjects = allCurriculum.filter(c => c.level === filters.classLevel).map(c => ({
-                                            code: c.code,
-                                            name: c.subject_name,
-                                            // Find credit/hours from main subjects list if possible
-                                            ...options.subjects.find(s => s.code === c.code)
-                                        }));
-                                    } catch (e) {
-                                        console.error("Failed to fetch curriculum for print", e);
+                                    // Fetch Curriculum Subjects for this Class Level
+                                    let curriculumSubjects = [];
+                                    if (filters.classLevel) {
+                                        try {
+                                            const res = await fetch(`/api/dashboard/data?type=curriculum`);
+                                            const allCurriculum = await res.json();
+
+                                            // 1. Get Set of scheduled subject codes
+                                            const scheduledCodes = new Set();
+                                            Object.values(scheduleData).forEach(dayPeriods => {
+                                                Object.values(dayPeriods).forEach(cell => {
+                                                    if (cell && cell !== 'skip' && cell.subject_code) {
+                                                        scheduledCodes.add(cell.subject_code);
+                                                    }
+                                                });
+                                            });
+
+                                            // 2. Filter curriculum to ONLY scheduled subjects
+                                            curriculumSubjects = allCurriculum
+                                                .filter(c => c.level === filters.classLevel && scheduledCodes.has(c.code))
+                                                .map(c => ({
+                                                    code: c.code,
+                                                    name: c.subject_name,
+                                                    // Find credit/hours from main subjects list if possible
+                                                    ...options.subjects.find(s => s.code === c.code)
+                                                }));
+
+                                            // Fallback: If some scheduled subjects are not in curriculum (e.g. manual add), try to find them in options.subjects
+                                            if (scheduledCodes.size > curriculumSubjects.length) {
+                                                scheduledCodes.forEach(code => {
+                                                    if (!curriculumSubjects.find(c => c.code === code)) {
+                                                        const sub = options.subjects.find(s => s.code === code);
+                                                        if (sub) curriculumSubjects.push(sub);
+                                                    }
+                                                });
+                                            }
+
+                                        } catch (e) {
+                                            console.error("Failed to fetch curriculum for print", e);
+                                        }
                                     }
-                                }
 
-                                const printData = {
-                                    scheduleData,
-                                    filters,
-                                    subjects: curriculumSubjects.length > 0 ? curriculumSubjects : (options.subjects || []),
-                                    studentInfo: { ...filters, teacherName }
-                                };
-                                localStorage.setItem('printData', JSON.stringify(printData));
-                                window.open('/print', '_blank');
-                            }}
-                            className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[100px] justify-center ${isDarkMode
-                                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white'
-                                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'
-                                }`}
-                        >
-                            <Printer size={18} />
-                            <span className="hidden sm:inline">{t('printBtn')}</span>
-                        </button>
+                                    const printData = {
+                                        scheduleData,
+                                        filters,
+                                        subjects: curriculumSubjects.length > 0 ? curriculumSubjects : (options.subjects || []),
+                                        studentInfo: { ...filters, teacherName }
+                                    };
+                                    localStorage.setItem('printData', JSON.stringify(printData));
+                                    window.open('/print', '_blank');
+                                }}
+                                className={`h-[42px] px-4 rounded-xl text-sm font-bold border transition-all flex items-center gap-2 whitespace-nowrap min-w-[100px] justify-center ${isDarkMode
+                                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'
+                                    }`}
+                            >
+                                <Printer size={18} />
+                                <span className="hidden sm:inline">{t('printBtn')}</span>
+                            </button>
+                        )}
+
+                        {/* Excel Export Button */}
+
                     </div>
                 </div>
 
@@ -713,19 +975,22 @@ export default function SchedulePage() {
                             <table className="w-full table-fixed border-collapse bg-white dark:bg-[#1e293b]">
                                 <thead className={`text-xs font-bold uppercase ${isDarkMode ? 'bg-[#151925] text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
                                     <tr>
-                                        <th className="p-4 w-24 border-b border-r border-slate-200 dark:border-white/10 text-center">{t('timeDay')}</th>
+                                        <th className="p-3 w-[80px] border-b border-r border-slate-200 dark:border-white/10 text-center">{t('timeDay')}</th>
+                                        <th className="p-2 w-[50px] border-b border-r border-slate-200 dark:border-white/10 text-center text-[10px] bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400">{t('activity')}</th>
                                         {periods.slice(0, 4).map((p, i) => (
-                                            <th key={p} className="p-3 border-b border-l border-slate-200 dark:border-white/10 text-center font-bold">
-                                                <span className="block text-sm">{timeSlots[i]}</span>
+                                            <th key={p} className="p-2 border-b border-l border-slate-200 dark:border-white/10 text-center font-bold">
+                                                <span className="block text-xs">{t('period')} {p}</span>
+                                                <span className="block text-[10px] opacity-60">{timeSlots[i]}</span>
                                             </th>
                                         ))}
                                         {/* Lunch Break Header */}
-                                        <th className="p-3 border-b border-l border-slate-200 dark:border-white/10 text-center bg-slate-100 dark:bg-white/5 font-bold">
-                                            <span className="block text-sm">12:00-13:00</span>
+                                        <th className="p-2 w-[50px] border-b border-l border-slate-200 dark:border-white/10 text-center bg-orange-100 dark:bg-orange-900/20 font-bold text-orange-600 dark:text-orange-400">
+                                            <span className="block text-[10px]">{t('lunch')}</span>
                                         </th>
                                         {periods.slice(5).map((p, i) => (
-                                            <th key={p} className="p-3 border-b border-l border-slate-200 dark:border-white/10 text-center font-bold">
-                                                <span className="block text-sm">{timeSlots[i + 5]}</span>
+                                            <th key={p} className="p-2 border-b border-l border-slate-200 dark:border-white/10 text-center font-bold">
+                                                <span className="block text-xs">{t('period')} {p}</span>
+                                                <span className="block text-[10px] opacity-60">{timeSlots[i + 5]}</span>
                                             </th>
                                         ))}
                                     </tr>
@@ -742,13 +1007,27 @@ export default function SchedulePage() {
                                                                     day === 'วันเสาร์' ? t('saturday') :
                                                                         day === 'วันอาทิตย์' ? t('sunday') : day}
                                             </td>
+
+                                            {/* Activity Column (Flag Ceremony) */}
+                                            {day === 'วันจันทร์' && (
+                                                <td rowSpan={days.length} className="border-r border-slate-200 dark:border-white/10 bg-pink-100 dark:bg-pink-900/20 align-middle text-center p-0 relative w-[50px]">
+                                                    <div className="h-full w-full flex items-center justify-center">
+                                                        <span className="-rotate-90 whitespace-nowrap text-xs font-bold text-pink-600 dark:text-pink-400">
+                                                            {t('flagCeremony')}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            )}
+
                                             {periods.slice(0, 4).map(period => renderSlot(day, period))}
 
                                             {/* Lunch Break Column */}
                                             {day === 'วันจันทร์' && (
-                                                <td rowSpan={5} className="border-l border-slate-200 dark:border-white/10 text-center align-middle bg-slate-100 dark:bg-white/5">
-                                                    <div className="h-full flex items-center justify-center">
-                                                        <span className="text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">{t('lunchBreak')}</span>
+                                                <td rowSpan={days.length} className="border-l border-slate-200 dark:border-white/10 text-center align-middle bg-orange-50 dark:bg-orange-900/10 p-0 relative w-[50px]">
+                                                    <div className="h-full w-full flex items-center justify-center">
+                                                        <span className="-rotate-90 whitespace-nowrap text-xs font-bold text-orange-600 dark:text-orange-400">
+                                                            {t('lunchBreak')}
+                                                        </span>
                                                     </div>
                                                 </td>
                                             )}
@@ -832,7 +1111,7 @@ export default function SchedulePage() {
                                     <div className="relative">
                                         <select name="room_id" className={inputGlass} value={manualFormData.room_id} onChange={e => setManualFormData({ ...manualFormData, room_id: e.target.value })}>
                                             <option value="">{t('select')}</option>
-                                            {options.rooms?.map(r => <option key={r.name} value={r.id}>{r.name} ({r.type})</option>)}
+                                            {options.rooms?.map(r => <option key={r.id} value={r.id}>{r.name} ({r.type})</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50" size={16} />
                                     </div>
@@ -936,6 +1215,10 @@ export default function SchedulePage() {
                 )}
 
             </div>
+            {/* Center Buttons for Student (Footer) */}
+            {role === 'student' && (
+                <div className="hidden"></div>
+            )}
         </div>
     );
 }

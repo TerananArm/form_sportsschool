@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { useSound } from '../context/SoundContext';
+import { useSession } from 'next-auth/react';
 
 // 🔢 CountUp Component
 const CountUp = ({ end, duration = 2000 }) => {
@@ -99,7 +100,10 @@ export default function Dashboard() {
     const [stats, setStats] = useState({ students: 0, teachers: 0, users: 0, class_levels: 0, subjects: 0, departments: 0, rooms: 0, credits: 0, curriculum: 0, schedule: 0, scheduled_subjects: 0, hours: 0, logs: 0 });
     const { isDarkMode } = useTheme();
     const { t, language } = useLanguage();
+
     const { play: playSound } = useSound(); // 🔊 Sound effects
+    const { data: session } = useSession();
+    const role = session?.user?.role || 'student';
 
     // 🔊 Play Intro Sound on Mount
     useEffect(() => {
@@ -163,20 +167,31 @@ export default function Dashboard() {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
+            // Initialize with session if available to avoid "User" flicker
+            if (session?.user?.name) {
+                setUserData(prev => ({ ...prev, name: session.user.name }));
+            }
+
             try {
                 const [statsRes, userRes] = await Promise.all([fetch('/api/dashboard/stats'), fetch('/api/user')]);
                 if (userRes.ok) {
                     const userData = await userRes.json();
-                    setUserData(userData);
+                    console.log("Fetched User Data:", userData); // Debug
+                    if (userData.name) {
+                        setUserData(userData);
+                    }
+                } else {
+                    console.error("Failed to fetch user data:", await userRes.text());
                 }
+
                 if (statsRes.ok) {
                     const statsData = await statsRes.json();
                     setStats(prev => ({ ...prev, ...statsData }));
                 }
-            } catch (error) { console.error(error); }
+            } catch (error) { console.error("Dashboard Fetch Error:", error); }
         };
         fetchDashboardData();
-    }, []);
+    }, [session]);
 
     const handleCardClick = async (type, title) => {
         playSound('card-open'); // 🔊 Click sound
@@ -251,7 +266,12 @@ export default function Dashboard() {
 
                 {/* Grid Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {cards.map((card, index) => <StatCard key={index} {...card} index={index} onClick={handleCardClick} isDarkMode={isDarkMode} />)}
+                    {cards.filter(c => {
+                        if (role === 'admin') return true;
+                        if (role === 'teacher') return ['schedule', 'subjects', 'students', 'hours', 'scheduled_subjects'].includes(c.type);
+                        if (role === 'student') return ['schedule', 'subjects'].includes(c.type);
+                        return false;
+                    }).map((card, index) => <StatCard key={index} {...card} index={index} onClick={handleCardClick} isDarkMode={isDarkMode} />)}
                 </div>
             </div>
 

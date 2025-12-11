@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSound } from '../context/SoundContext';
+import { useSession } from 'next-auth/react'; // Import useSession
 
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -20,6 +21,8 @@ export default function Header() {
   const { language, t } = useLanguage();
   const { soundEnabled, toggleSound, play } = useSound();
 
+  const { data: session } = useSession(); // Access session data
+
   const handleLogout = () => {
     play('logout');
     router.push('/login');
@@ -27,16 +30,28 @@ export default function Header() {
 
   useEffect(() => {
     const fetchUser = async () => {
+      // Prioritize Session Data
+      if (session?.user?.name) {
+        setUserData({
+          name: session.user.name,
+          image: session.user.image || ''
+        });
+      }
+
+      // Still fetch from API to get the latest image if changed
       try {
         const res = await fetch('/api/user', { cache: 'no-store' });
         if (res.ok) {
           const user = await res.json();
-          setUserData({ name: user.name || 'Admin', image: user.image || '' });
+          setUserData(prev => ({
+            name: user.name || session?.user?.name || 'Admin',
+            image: user.image || prev.image || ''
+          }));
         }
       } catch (error) { console.error(error); }
     };
     fetchUser();
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     const updateTime = () => {

@@ -53,7 +53,7 @@ export async function POST(request) {
             return NextResponse.json({ message: 'AI ตอบกลับผิดพลาด' }, { status: 500 });
         }
 
-        return NextResponse.json({ recommendedIds });
+        return NextResponse.json({ ...recommendedIds });
 
     } catch (error) {
         console.error("AI Curriculum Error:", error);

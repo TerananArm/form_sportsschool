@@ -75,18 +75,20 @@ export const authOptions = {
                     if (teachers.length > 0) {
                         const teacher = teachers[0];
                         let isValid = false;
-                        if (teacher.password && teacher.password !== '1234' && teacher.password !== teacher.teacherId) {
+
+                        // Check default passwords first (1234, teacherId, birthdate)
+                        const dob = formatDateToPassword(teacher.birthDate);
+                        if (password === '1234') isValid = true;
+                        else if (password === teacher.teacherId) isValid = true;
+                        else if (dob && dob === password) isValid = true;
+
+                        // If not default, check stored password
+                        if (!isValid && teacher.password) {
                             if (teacher.password.startsWith('$2')) {
                                 isValid = await bcrypt.compare(password, teacher.password);
                             } else {
                                 isValid = teacher.password === password;
                             }
-                        } else {
-                            // Default password checks
-                            const dob = formatDateToPassword(teacher.birthDate);
-                            if (password === '1234') isValid = true;
-                            else if (password === teacher.teacherId) isValid = true; // defaulting to ID?
-                            else if (dob && dob === password) isValid = true;
                         }
 
                         if (isValid) {

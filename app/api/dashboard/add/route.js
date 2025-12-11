@@ -84,9 +84,9 @@ export async function POST(request) {
 
             case 'class_levels':
                 const deptIdLevel = await getDeptId(data.department_name);
-                checkSql = 'SELECT id FROM class_levels WHERE name = ? AND department_id = ?';
+                checkSql = 'SELECT id FROM class_levels WHERE name = ? AND departmentId = ?';
                 checkParams = [v(data.level), deptIdLevel];
-                insertSql = 'INSERT INTO class_levels (id, name, department_id, updatedAt) VALUES (UUID(), ?, ?, ?)';
+                insertSql = 'INSERT INTO class_levels (id, name, departmentId, updatedAt) VALUES (UUID(), ?, ?, ?)';
                 insertParams = [v(data.level), deptIdLevel, new Date()];
                 break;
 

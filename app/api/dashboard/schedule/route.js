@@ -13,10 +13,24 @@ export async function GET(request) {
 
     try {
         // Get class level ID if provided
+        // Get class level ID if provided
         let classLevelId = null;
         if (classLevel) {
-            const [clRows] = await db.execute('SELECT id FROM class_levels WHERE name = ?', [classLevel]);
-            if (clRows.length > 0) classLevelId = clRows[0].id;
+            // Fix: Must filter by Department to get unique ID
+            if (department) {
+                const [deptRow] = await db.execute('SELECT id FROM departments WHERE name = ?', [department]);
+                if (deptRow.length > 0) {
+                    const [clRows] = await db.execute('SELECT id FROM class_levels WHERE name = ? AND departmentId = ?', [classLevel, deptRow[0].id]);
+                    if (clRows.length > 0) classLevelId = clRows[0].id;
+                }
+            }
+
+            // Fallback (if department not passed perfectly or legacy)
+            // Still risky, but better than nothing? Or maybe we strictly require it?
+            if (!classLevelId) {
+                const [clRows] = await db.execute('SELECT id FROM class_levels WHERE name = ?', [classLevel]);
+                if (clRows.length > 0) classLevelId = clRows[0].id;
+            }
         }
 
         // SQL with CORRECT column names (matching DB schema: camelCase)
@@ -152,11 +166,31 @@ export async function POST(request) {
             `, [day, day, start_period, end_period, startTime, endTime, subject_id, teacher_id, classLevelId, room_id || null, departmentId, term]);
 
             return NextResponse.json({ message: 'เพิ่มรายวิชาสำเร็จ' });
+        } else if (action === 'move_slot') {
+            const { id, newDay, newStart } = data;
+
+            // Get original to know duration
+            const [rows] = await db.execute('SELECT start_period, end_period FROM schedule WHERE id = ?', [id]);
+            if (rows.length === 0) return NextResponse.json({ message: 'ไม่พบรายการ' }, { status: 404 });
+
+            const duration = rows[0].end_period - rows[0].start_period + 1;
+            const newEnd = newStart + duration - 1;
+
+            // Recalculate Time strings
+            const times = { 1: "08:00", 2: "09:00", 3: "10:00", 4: "11:00", 5: "12:00", 6: "13:00", 7: "14:00", 8: "15:00", 9: "16:00", 10: "17:00", 11: "18:00" };
+            const startTime = times[newStart] || "08:00";
+            const endTime = times[newEnd + 1] || "10:00";
+
+            await db.execute(
+                'UPDATE schedule SET day = ?, day_of_week = ?, start_period = ?, end_period = ?, startTime = ?, endTime = ? WHERE id = ?',
+                [newDay, newDay, newStart, newEnd, startTime, endTime, id]
+            );
+            return NextResponse.json({ message: 'ย้ายสำเร็จ' });
         }
         return NextResponse.json({ message: 'Invalid action' }, { status: 400 });
     } catch (error) {
-        console.error("POST Schedule Error:", error);
-        return NextResponse.json({ message: 'Error: ' + error.message }, { status: 500 });
+        console.error("Schedule API Error:", error);
+        return NextResponse.json({ message: 'Internal Error: ' + error.message }, { status: 500 });
     }
 }
 
