@@ -3,7 +3,7 @@
 import { createPortal } from 'react-dom';
 import {
     X, Plus, FileDown, FileSpreadsheet, Trash2, Search,
-    Pencil, ChevronLeft, ChevronRight, GraduationCap, Filter, Sparkles
+    Pencil, ChevronLeft, ChevronRight, GraduationCap, Filter, Sparkles, Clock
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ConfirmModal from './ConfirmModal';
 import DatePicker from './DatePicker';
+import TeacherAvailabilityModal from './TeacherAvailabilityModal';
 
 export default function TableModal({ isOpen, onClose, title, type, data }) {
     const { isDarkMode } = useTheme();
@@ -31,6 +32,8 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
     const [view, setView] = useState('list'); // 'list', 'add', 'edit'
     const [formData, setFormData] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
+    const [selectedTeacher, setSelectedTeacher] = useState(null);
     const fileInputRef = useRef(null);
     const itemsPerPage = 10;
 
@@ -615,7 +618,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
     // Dynamic Columns with Translations
     const columns = {
         students: [{ k: 'id', l: t('studentId') }, { k: 'name', l: t('students') }, { k: 'dept', l: t('department') }, { k: 'level', l: t('classLevel') }, { k: 'birthdate', l: t('birthdate'), fmt: (v) => v ? new Date(v).toLocaleDateString('th-TH') : '-' }],
-        teachers: [{ k: 'id', l: t('teacherId') }, { k: 'name', l: t('teacher') }, { k: 'dept', l: t('department') }, { k: 'room', l: t('room') }, { k: 'max_hours', l: t('maxHours') }, { k: 'birthdate', l: t('birthdate'), fmt: (v) => v ? new Date(v).toLocaleDateString('th-TH') : '-' }],
+        teachers: [{ k: 'id', l: t('teacherId') }, { k: 'name', l: t('teacher') }, { k: 'dept', l: t('department') }, { k: 'room', l: t('room') }, { k: 'max_hours', l: t('maxHours') }, { k: 'unavailable_times', l: 'ไม่สะดวก', fmt: (v) => { try { const data = typeof v === 'string' ? JSON.parse(v || '{}') : (v || {}); return `${Object.keys(data).length} ช่วง`; } catch { return '0 ช่วง'; } } }, { k: 'birthdate', l: t('birthdate'), fmt: (v) => v ? new Date(v).toLocaleDateString('th-TH') : '-' }],
         subjects: [{ k: 'code', l: t('subjectCode') }, { k: 'name', l: t('subject') }, { k: 'credit', l: t('credit') }, { k: 'dept', l: t('department') }, { k: 'theory_hours', l: t('theory') }, { k: 'practice_hours', l: t('practice') }],
         rooms: [{ k: 'name', l: t('room') }, { k: 'type', l: t('type') }, { k: 'capacity', l: t('capacity') }],
         departments: [{ k: 'name', l: t('department') }],
@@ -633,6 +636,8 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
         scheduled_subjects: [{ k: 'code', l: t('subjectCode') }, { k: 'name', l: t('subject') }, { k: 'dept', l: t('department') }],
         credits: [{ k: 'code', l: t('subjectCode') }, { k: 'name', l: t('subject') }, { k: 'credit', l: t('credit') }],
         hours: [{ k: 'name', l: t('teacher') }, { k: 'total_hours', l: t('totalHours') }],
+        room_utilization: [{ k: 'room', l: t('room') }, { k: 'type', l: t('type') }, { k: 'capacity', l: t('capacity') }, { k: 'used_periods', l: 'คาบที่ใช้' }, { k: 'utilization_percent', l: 'อัตราใช้งาน (%)' }],
+        teaching_load: [{ k: 'teacher', l: t('teacher') }, { k: 'dept', l: t('department') }, { k: 'actual_hours', l: 'ชม.จริง' }, { k: 'max_hours', l: t('maxHours') }],
         logs: [{ k: 'user', l: t('users') }, { k: 'action', l: t('action') }, { k: 'timestamp', l: t('time') }],
     }[type] || [{ k: 'name', l: t('item') }];
 
@@ -771,6 +776,15 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                                                 ))}
                                                 <td className="px-4 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                        {role === 'admin' && type === 'teachers' && (
+                                                            <button
+                                                                onClick={() => { setSelectedTeacher(item); setAvailabilityModalOpen(true); }}
+                                                                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-orange-900/30 text-orange-400' : 'hover:bg-orange-50 text-orange-500 hover:shadow-sm'}`}
+                                                                title="ตั้งค่าเวลาไม่สะดวก"
+                                                            >
+                                                                <Clock size={16} />
+                                                            </button>
+                                                        )}
                                                         {role === 'admin' && (
                                                             <button onClick={() => handleEdit(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-white text-slate-600 hover:shadow-sm'}`}><Pencil size={16} /></button>
                                                         )}
@@ -835,6 +849,14 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                     </div>
                 )}
             </div>
+
+            {/* Teacher Availability Modal */}
+            <TeacherAvailabilityModal
+                isOpen={availabilityModalOpen}
+                onClose={() => { setAvailabilityModalOpen(false); setSelectedTeacher(null); }}
+                teacher={selectedTeacher}
+                onSave={() => window.location.reload()}
+            />
         </div>,
         document.body
     );

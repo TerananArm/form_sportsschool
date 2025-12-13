@@ -323,29 +323,17 @@ export default function SchedulePage() {
         let skippedCount = 0;
         let failures = []; // Store failure details
 
-        // Fetch all curriculum data once to check rules
-        let allCurriculum = [];
-        try {
-            const res = await fetch(`/api/dashboard/data?type=curriculum`);
-            allCurriculum = await res.json();
-        } catch (e) {
-            console.error("Failed to fetch curriculum for check", e);
-        }
+        // Limit to 3 rooms removed as per request
+        const limitTotal = total;
+        setAgentLogs(prev => [...prev, { message: `Processing all ${limitTotal} rooms...`, type: 'info' }]);
 
-        for (let i = 0; i < total; i++) {
+        for (let i = 0; i < limitTotal; i++) {
             const level = options.levels[i];
             const levelName = level.level;
             const departmentName = level.department_name || '';
 
-            // Check if class has rules (Strict Check: Level + Department)
-            const hasRules = allCurriculum.some(c => c.level === levelName && c.department === departmentName);
-
-            if (!hasRules) {
-                skippedCount++;
-                setAgentLogs(prev => [...prev, { message: `⚠️ ${levelName}: ${t('autoGenSkipped')}`, type: 'warning' }]);
-                failures.push(`${levelName}: ${t('autoGenSkipped')}`);
-                continue; // Skip this class
-            }
+            // Removed client-side pre-check (hasRules) to rely on API 400 response for empty subjects check.
+            // This ensures we don't accidentally skip valid rooms due to data mismatch.
 
             setAgentStep('Action');
             setAgentLogs(prev => [...prev, { message: `Processing (${i + 1}/${total}): ${levelName}...`, type: 'info' }]);
@@ -361,48 +349,43 @@ export default function SchedulePage() {
                     }),
                 });
 
-                const result = await res.json();
-
                 if (res.ok) {
                     successCount++;
-                    setAgentLogs(prev => [...prev, { message: `✅ ${levelName}: ${t('success')}`, type: 'success' }]);
+                    setAgentLogs(prev => [...prev, { message: `✅ ${levelName}: Success`, type: 'success' }]);
                 } else {
+                    const err = await res.json().catch(() => ({ message: res.statusText }));
+                    if (res.status === 400) {
+                        skippedCount++;
+                        setAgentLogs(prev => [...prev, { message: `⚠️ ${levelName}: ${err.message || 'Skipped'}`, type: 'warning' }]);
+                        continue;
+                    }
                     failCount++;
-                    failures.push(`${levelName}: ${result.message || 'Unknown error'}`);
-                    setAgentLogs(prev => [...prev, { message: `❌ ${levelName}: ${result.message || 'Failed'}`, type: 'error' }]);
+                    setAgentLogs(prev => [...prev, { message: `❌ ${levelName}: ${err.message}`, type: 'error' }]);
                 }
-
             } catch (e) {
-                console.error(`Failed to generate for ${levelName}`, e);
                 failCount++;
-                failures.push(`${levelName}: Connection/Server Error`);
-                setAgentLogs(prev => [...prev, { message: `❌ ${levelName}: Error`, type: 'error' }]);
+                setAgentLogs(prev => [...prev, { message: `❌ ${levelName}: Connection Error`, type: 'error' }]);
             }
 
-            // Small delay between requests
-            await new Promise(r => setTimeout(r, 200));
+            // No delay needed - JavaScript scheduler is instant!
         }
-
-        setAgentStep('Review');
-        setAgentLogs(prev => [...prev, { message: 'Finalizing and verifying...', type: 'info' }]);
-        await new Promise(r => setTimeout(r, 500));
 
         setLoading(false);
         setLoadingMessage('');
 
-        // Construct detailed message
-        // Construct simple message (User request: Only show success)
         let message = `${t('autoGenSuccess')}: ${successCount}`;
-
-        // Only show fail/skip counts if there are any, but NO details to avoid overflow
         if (failCount > 0) message += `\n${t('autoGenFail')}: ${failCount}`;
         if (skippedCount > 0) message += `\n${t('autoGenSkipped')}: ${skippedCount}`;
 
+        let modalType = 'success';
+        if (failCount > 0 && successCount > 0) modalType = 'warning';
+        if (successCount === 0 && failCount > 0) modalType = 'danger';
+
         setConfirmConfig({
             isOpen: true,
-            title: t('success'),
+            title: successCount > 0 ? t('success') : t('error'),
             message: message,
-            type: successCount > 0 ? 'success' : 'danger',
+            type: modalType,
             onConfirm: () => {
                 if (filters.department && filters.classLevel) fetchSchedule();
             }

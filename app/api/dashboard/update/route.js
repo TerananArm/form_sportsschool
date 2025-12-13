@@ -27,8 +27,30 @@ export async function PUT(request) {
 
             case 'teachers':
                 const deptIdTch = await getDeptId(data.department);
-                sql = 'UPDATE teachers SET name=?, departmentId=?, officeRoom=?, maxHoursPerWeek=?, birthDate=?, updatedAt=? WHERE id=?';
-                params = [v(data.name), deptIdTch, v(data.room), v(data.max_hours), v(data.birthdate), new Date(), id];
+
+                // Parse unavailable_times from text format (e.g. "จันทร์:1,2 พุธ:7,8,9") to JSON
+                let unavailableTimesJson = null;
+                if (data.unavailable_times) {
+                    if (typeof data.unavailable_times === 'string') {
+                        const dayMap = { 'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัสบดี': 4, 'ศุกร์': 5 };
+                        const parts = data.unavailable_times.trim().split(/\s+/);
+                        const parsed = [];
+                        for (const part of parts) {
+                            const [dayName, periodsStr] = part.split(':');
+                            const dayNum = dayMap[dayName];
+                            if (dayNum && periodsStr) {
+                                const periods = periodsStr.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
+                                if (periods.length > 0) parsed.push({ day: dayNum, periods });
+                            }
+                        }
+                        unavailableTimesJson = parsed.length > 0 ? JSON.stringify(parsed) : null;
+                    } else {
+                        unavailableTimesJson = JSON.stringify(data.unavailable_times);
+                    }
+                }
+
+                sql = 'UPDATE teachers SET name=?, departmentId=?, officeRoom=?, maxHoursPerWeek=?, birthDate=?, unavailableTimes=?, updatedAt=? WHERE id=?';
+                params = [v(data.name), deptIdTch, v(data.room), v(data.max_hours), v(data.birthdate), unavailableTimesJson, new Date(), id];
                 break;
 
             case 'subjects':

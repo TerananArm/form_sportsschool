@@ -3,7 +3,7 @@
 import {
   LayoutDashboard, Calendar, DoorOpen, Users,
   UserSquare2, BookOpen, Building2, ListChecks, UserCog,
-  Menu, LogOut, GraduationCap, Globe
+  Menu, LogOut, GraduationCap, Globe, HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -32,6 +32,7 @@ export default function Sidebar() {
     { name: t('levels'), icon: GraduationCap, path: '/dashboard/levels', roles: ['admin'] },
     { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum', roles: ['admin'] },
     { name: t('users'), icon: UserCog, path: '/dashboard/users', roles: ['admin'] },
+    { name: language === 'th' ? 'ช่วยเหลือ' : 'Help', icon: HelpCircle, path: '/dashboard/help', roles: ['admin', 'teacher', 'student'] },
   ];
 
   const menuItems = allMenuItems.filter(item => item.roles.includes(role));
@@ -106,27 +107,10 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Footer Profile & Language Toggle */}
+        {/* Footer - Language Toggle Only */}
         <div className={`absolute bottom-0 w-full p-4 border-t backdrop-blur-md transition-colors duration-500 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-white/10 border-white/20'}`}>
-          <div className={`flex flex-col gap-3`}>
-            {/* Language Selector */}
-            <LanguageSelector isSidebarCollapsed={isSidebarCollapsed} />
-
-            <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center text-xs font-bold text-white shadow-md shrink-0">
-                A
-              </div>
-              <div className={`overflow-hidden whitespace-nowrap transition-all duration-500 ${isSidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-                <p className="text-sm font-bold truncate">Admin User</p>
-                <button
-                  onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
-                  className="text-[10px] opacity-70 hover:text-red-500 flex items-center gap-1 mt-0.5 cursor-pointer transition-colors"
-                >
-                  <LogOut size={10} /> {t('logout')}
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Language Selector */}
+          <LanguageSelector isSidebarCollapsed={isSidebarCollapsed} />
         </div>
       </aside>
     </>

@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext'; // ✅ Import useLanguage
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePicker from '../../components/DatePicker';
+import TimeGridPicker from '../../components/TimeGridPicker';
 
 export default function DynamicPage() {
     const params = useParams();
@@ -191,6 +192,7 @@ export default function DynamicPage() {
                 { name: 'room', label: t('teacherRoom'), type: 'text', placeholder: t('teacherRoomPlaceholder') },
                 { name: 'password', label: t('password'), placeholder: t('passwordPlaceholder'), type: 'password' },
                 { name: 'max_hours', label: t('maxHoursLabel'), defaultValue: '20', type: 'number' },
+                { name: 'unavailable_times', label: 'เวลาไม่สะดวกสอน', type: 'timegrid' },
             ],
         },
         'subjects': {
@@ -283,6 +285,11 @@ export default function DynamicPage() {
                                             {field.options?.map((opt, i) => <option key={i} value={opt} className="text-black">{opt}</option>)}
                                         </select>
                                     </div>
+                                ) : field.type === 'timegrid' ? (
+                                    <TimeGridPicker
+                                        value={formData[field.name]}
+                                        onChange={(value) => handleChange({ target: { name: field.name, value } })}
+                                    />
                                 ) : (
                                     <div key={language} className="relative"> {/* ✅ Force re-render of container */}
                                         {field.type === 'date' || field.name === 'birthdate' ? (
@@ -307,7 +314,7 @@ export default function DynamicPage() {
                                                 onChange={handleChange}
                                                 className={inputClass}
                                                 disabled={editId && (field.name === 'id' || field.name === 'code' || field.name === 'username')}
-                                                required={field.name !== 'password' && field.name !== 'birthdate' && field.name !== 'room'}
+                                                required={field.name !== 'password' && field.name !== 'birthdate' && field.name !== 'room' && field.name !== 'unavailable_times'}
                                             />
                                         )}
                                     </div>

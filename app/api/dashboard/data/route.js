@@ -27,7 +27,7 @@ export async function GET(request) {
                     break;
                 case 'teachers':
                     query = `
-                        SELECT t.id, t.teacherId, t.name, d.name as department, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate
+                        SELECT t.id, t.teacherId, t.name, d.name as department, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times
                         FROM teachers t 
                         LEFT JOIN departments d ON t.departmentId = d.id 
                         WHERE t.id = ?
@@ -61,7 +61,7 @@ export async function GET(request) {
                     break;
                 case 'teachers':
                     query = `
-                    SELECT t.id, t.teacherId, t.name, d.name as dept, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate 
+                    SELECT t.id, t.teacherId, t.name, d.name as dept, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times 
                     FROM teachers t 
                     LEFT JOIN departments d ON t.departmentId = d.id 
                     ORDER BY t.id ASC
@@ -108,10 +108,10 @@ export async function GET(request) {
                         SELECT sch.id, cl.name as level, d.name as dept, s.name as subject, t.name as teacher, 
                                sch.day_of_week, sch.start_period, sch.end_period 
                         FROM schedule sch 
-                        JOIN subjects s ON sch.subject_id = s.id 
-                        JOIN teachers t ON sch.teacher_id = t.id 
-                        JOIN class_levels cl ON sch.class_level_id = cl.id
-                        JOIN departments d ON cl.department_id = d.id
+                        JOIN subjects s ON sch.subjectId = s.id 
+                        JOIN teachers t ON sch.teacherId = t.id 
+                        JOIN class_levels cl ON sch.classLevelId = cl.id
+                        JOIN departments d ON cl.departmentId = d.id
                         ORDER BY sch.day_of_week, sch.start_period
                     `;
                     break;
@@ -135,9 +135,31 @@ export async function GET(request) {
                     query = `
                         SELECT t.name, SUM(sch.end_period - sch.start_period + 1) as total_hours 
                         FROM schedule sch 
-                        JOIN teachers t ON sch.teacher_id = t.id 
+                        JOIN teachers t ON sch.teacherId = t.id 
                         GROUP BY t.id, t.name 
                         ORDER BY total_hours DESC
+                    `;
+                    break;
+                case 'room_utilization':
+                    query = `
+                        SELECT r.name as room, r.type, r.capacity, COUNT(sch.id) as used_periods,
+                               ROUND(COUNT(sch.id) * 100.0 / 50, 1) as utilization_percent
+                        FROM rooms r
+                        LEFT JOIN schedule sch ON sch.roomId = r.id
+                        GROUP BY r.id, r.name, r.type, r.capacity
+                        ORDER BY utilization_percent DESC
+                    `;
+                    break;
+                case 'teaching_load':
+                    query = `
+                        SELECT t.name as teacher, t.maxHoursPerWeek as max_hours, 
+                               COALESCE(SUM(sch.end_period - sch.start_period + 1), 0) as actual_hours,
+                               d.name as dept
+                        FROM teachers t
+                        LEFT JOIN schedule sch ON sch.teacherId = t.id
+                        LEFT JOIN departments d ON t.departmentId = d.id
+                        GROUP BY t.id, t.name, t.maxHoursPerWeek, d.name
+                        ORDER BY actual_hours DESC
                     `;
                     break;
                 case 'logs':
