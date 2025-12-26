@@ -67,10 +67,17 @@ export default function GlobalChatWidget() {
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-black/20">
                         {chatHistory.length === 0 && (
-                            <div className={`text-center py-8 px-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                <Sparkles size={32} className="mx-auto mb-3 opacity-50" />
-                                <p className="text-sm font-medium">สวัสดี! ฉันคือผู้ช่วย AI</p>
-                                <p className="text-xs opacity-70 mt-1">ถามเกี่ยวกับตารางสอน ครู นักเรียน ได้เลย</p>
+                            <div className={`text-center py-6 px-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                <Sparkles size={32} className="mx-auto mb-3 opacity-50 text-blue-500" />
+                                <p className="text-sm font-bold mb-2">สวัสดีครับ! ให้ผมช่วยอะไรดี?</p>
+                                <div className="text-xs text-left space-y-2 bg-black/5 dark:bg-white/5 p-3 rounded-xl">
+                                    <p className="font-semibold opacity-70">ตัวอย่างคำสั่ง:</p>
+                                    <p>• "วิธีเพิ่มนักเรียนทำยังไง"</p>
+                                    <p>• "จัดตารางสอนอัตโนมัติ"</p>
+                                    <p>• "มีนักเรียนทั้งหมดกี่คน"</p>
+                                    <p>• "ครูคนไหนสอนเยอะสุด"</p>
+                                    <p>• "พิมพ์ตารางสอนยังไง"</p>
+                                </div>
                             </div>
                         )}
                         {chatHistory.map((msg, i) => (

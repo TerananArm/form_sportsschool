@@ -1,132 +1,103 @@
-
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getToken, decode } from "next-auth/jwt";
-import bcrypt from "bcryptjs";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../../lib/authOptions';
+import { PrismaClient } from '../../generated/prisma';
+import bcrypt from 'bcryptjs';
 
-export const dynamic = 'force-dynamic';
+const prisma = new PrismaClient();
 
-const SECRET = 'super-secret-key-123456789'; // Must match app/api/auth/[...nextauth]/route.js
-
-async function getUserFromRequest(request) {
-    // 1. Try getToken (standard NextAuth way)
-    const token = await getToken({ req: request, secret: SECRET });
-    if (token) return token;
-
-    // 2. Fallback: Manual decoding
-    const tokenCookie = request.cookies.get('next-auth.session-token') || request.cookies.get('__Secure-next-auth.session-token');
-    const tokenValue = tokenCookie?.value;
-
-    if (tokenValue) {
-        try {
-            return await decode({ token: tokenValue, secret: SECRET });
-        } catch (e) {
-            console.error("Token decoding failed:", e);
-        }
+export async function GET() {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return null;
-}
 
-// Get User Data
-export async function GET(request) {
     try {
-        const sessionUser = await getUserFromRequest(request);
-        if (!sessionUser) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { id, role } = sessionUser;
-        let user = null;
-
-        if (role === 'admin') {
-            const [rows] = await db.execute('SELECT id, username, name, image FROM users WHERE id = ?', [id]);
-            user = rows[0];
-        } else if (role === 'student') {
-            const [rows] = await db.execute(`
-                SELECT s.id, s.name, cl.name as level, d.name as department_name 
-                FROM students s 
-                LEFT JOIN departments d ON s.departmentId = d.id 
-                LEFT JOIN class_levels cl ON s.classLevelId = cl.id
-                WHERE s.id = ?`, [id]);
-            user = rows[0];
-        } else if (role === 'teacher') {
-            const [rows] = await db.execute(`
-                SELECT t.id, t.name, d.name as department_name 
-                FROM teachers t 
-                LEFT JOIN departments d ON t.departmentId = d.id 
-                WHERE t.id = ?`, [id]);
-            user = rows[0];
-        }
-
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ ...user, role });
+        const user = await prisma.user.findUnique({
+            where: { id: parseInt(session.user.id) },
+            select: { name: true, image: true, username: true }
+        });
+        return NextResponse.json(user);
     } catch (error) {
-        console.error("Get User Error:", error);
-        return NextResponse.json({ error: 'Database Error' }, { status: 500 });
+        console.error('GET user error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// Update User Data
-export async function PUT(request) {
+export async function PUT(req) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        const sessionUser = await getUserFromRequest(request);
+        const body = await req.json();
+        const { name, password, newPassword, image } = body;
+        const userId = parseInt(session.user.id);
 
-        if (!sessionUser) {
-            const cookies = request.cookies.getAll();
-            const cookieNames = cookies.map(c => c.name).join(', ');
-            return NextResponse.json({
-                error: 'Unauthorized',
-                debug: `Session / Token failed.Cookies received: ${cookieNames || 'None'} `
-            }, { status: 401 });
+        const updateData = {};
+
+        // Update name if provided
+        if (name !== undefined && name !== '') {
+            updateData.name = name;
         }
 
-        const { id, role } = sessionUser;
-
-        // ... rest of the code
-
-        const body = await request.json();
-        console.log("PUT /api/user Body:", body); // Debug log
-        const { name, image, password } = body;
-
-        if (!name) return NextResponse.json({ message: 'Name is required' }, { status: 400 });
-
-        let hashedPassword = null;
-        if (password && password.trim() !== "") {
-            hashedPassword = await bcrypt.hash(password, 10);
+        // Update image if provided
+        if (image !== undefined) {
+            updateData.image = image;
         }
 
-        if (role === 'admin') {
-            if (hashedPassword) {
-                await db.execute('UPDATE users SET name = ?, image = ?, password = ? WHERE id = ?', [name, image, hashedPassword, id]);
-            } else {
-                await db.execute('UPDATE users SET name = ?, image = ? WHERE id = ?', [name, image, id]);
+        // Handle password change
+        if (newPassword) {
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+
+            if (!user) {
+                return NextResponse.json({ error: 'User not found' }, { status: 404 });
             }
-        } else if (role === 'student') {
-            // Student table has no image column in schema (unless I add it).
-            // For now, ignore image for student/teacher if column missing.
-            // Or I should add image column to them?
-            // User said "change in profile settings later", implying they want full profile features.
-            // I'll update name and password.
-            if (hashedPassword) {
-                await db.execute('UPDATE students SET name = ?, password = ? WHERE id = ?', [name, hashedPassword, id]);
-            } else {
-                await db.execute('UPDATE students SET name = ? WHERE id = ?', [name, id]);
+
+            // Verify old password if provided
+            if (password) {
+                let isValid = false;
+
+                // Check if stored password is bcrypt hashed
+                if (user.password && user.password.startsWith('$2')) {
+                    isValid = await bcrypt.compare(password, user.password);
+                } else {
+                    // Plain text comparison for legacy passwords
+                    isValid = password === user.password;
+                }
+
+                if (!isValid) {
+                    return NextResponse.json({ error: 'รหัสผ่านเดิมไม่ถูกต้อง' }, { status: 400 });
+                }
             }
-        } else if (role === 'teacher') {
-            // Teacher table has no image column.
-            if (hashedPassword) {
-                await db.execute('UPDATE teachers SET name = ?, password = ? WHERE id = ?', [name, hashedPassword, id]);
-            } else {
-                await db.execute('UPDATE teachers SET name = ? WHERE id = ?', [name, id]);
-            }
+
+            // Hash the new password
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            updateData.password = hashedPassword;
         }
 
-        return NextResponse.json({ message: 'Updated successfully' });
+        // Only update if there's data to update
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No data to update' }, { status: 400 });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+        });
+
+        return NextResponse.json({
+            success: true,
+            user: {
+                name: updatedUser.name,
+                image: updatedUser.image,
+                username: updatedUser.username
+            }
+        });
+
     } catch (error) {
-        console.error("Update User Error:", error);
-        return NextResponse.json({ message: 'Update Failed: ' + error.message }, { status: 500 });
+        console.error('PUT user error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

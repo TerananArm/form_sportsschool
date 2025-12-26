@@ -1,140 +1,137 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-
-  output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model Teacher {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
-  birthdate DateTime?
-  password  String?
-  room      String?
-  maxHours  Int?     @map("max_hours")
-  departmentId String? @map("department_id")
-  department Department? @relation(fields: [departmentId], references: [id])
-  subjects  Subject[]
-  schedules Schedule[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
+model Applicant {
+  id                    Int       @id @default(autoincrement())
+  applicationNumber     String    @unique @map("application_number") @db.VarChar(20)
+  
+  // ข้อมูลส่วนตัว
+  examApplicationNumber String?   @map("exam_application_number") @db.VarChar(50)
+  targetSchool          String?   @map("target_school") @db.VarChar(255)
+  schoolCode            String?   @map("school_code") @db.VarChar(50)
+  name                  String    @db.VarChar(255)
+  gender                String    @db.VarChar(10)
+  age                   Int?
+  birthdate             DateTime? @db.Date
+  height                Float?
+  weight                Float?
+  race                  String?   @db.VarChar(100)
+  nationality           String?   @db.VarChar(100)
+  religion              String?   @db.VarChar(100)
+  
+  // ข้อมูลบิดา
+  fatherName            String?   @map("father_name") @db.VarChar(255)
+  fatherOccupation      String?   @map("father_occupation") @db.VarChar(255)
+  fatherRace            String?   @map("father_race") @db.VarChar(100)
+  fatherNationality     String?   @map("father_nationality") @db.VarChar(100)
+  fatherReligion        String?   @map("father_religion") @db.VarChar(100)
+  fatherIsAthlete       Boolean?  @default(false) @map("father_is_athlete")
+  fatherAthleteLevel    String?   @map("father_athlete_level") @db.VarChar(255)
+  fatherSport           String?   @map("father_sport") @db.VarChar(100)
+  fatherHeight          Float?    @map("father_height")
+  fatherWeight          Float?    @map("father_weight")
+  
+  // ข้อมูลมารดา
+  motherName            String?   @map("mother_name") @db.VarChar(255)
+  motherOccupation      String?   @map("mother_occupation") @db.VarChar(255)
+  motherRace            String?   @map("mother_race") @db.VarChar(100)
+  motherNationality     String?   @map("mother_nationality") @db.VarChar(100)
+  motherReligion        String?   @map("mother_religion") @db.VarChar(100)
+  motherIsAthlete       Boolean?  @default(false) @map("mother_is_athlete")
+  motherAthleteLevel    String?   @map("mother_athlete_level") @db.VarChar(255)
+  motherSport           String?   @map("mother_sport") @db.VarChar(100)
+  motherHeight          Float?    @map("mother_height")
+  motherWeight          Float?    @map("mother_weight")
+  
+  // ที่อยู่ติดต่อ
+  address               String?   @db.VarChar(255)
+  village               String?   @db.VarChar(50)
+  road                  String?   @db.VarChar(100)
+  subDistrict           String?   @map("sub_district") @db.VarChar(100)
+  district              String?   @db.VarChar(100)
+  province              String?   @db.VarChar(100)
+  postalCode            String?   @map("postal_code") @db.VarChar(10)
+  phone                 String?   @db.VarChar(20)
+  
+  // สถานภาพการศึกษา
+  currentEducation      String?   @map("current_education") @db.VarChar(50)
+  educationYear         String?   @map("education_year") @db.VarChar(20)
+  schoolName            String?   @map("school_name") @db.VarChar(255)
+  schoolSubDistrict     String?   @map("school_sub_district") @db.VarChar(100)
+  schoolDistrict        String?   @map("school_district") @db.VarChar(100)
+  schoolProvince        String?   @map("school_province") @db.VarChar(100)
+  schoolPostalCode      String?   @map("school_postal_code") @db.VarChar(10)
+  
+  // ข้อมูลการสมัคร
+  sportType             String    @map("sport_type") @db.VarChar(100)
+  sportCode             String?   @map("sport_code") @db.VarChar(50)
+  appliedLevel          String?   @map("applied_level") @db.VarChar(50)
+  
+  // หลักฐานการสมัคร
+  hasEducationCert      Boolean?  @default(false) @map("has_education_cert")
+  educationCertCount    Int?      @map("education_cert_count")
+  educationCertPath     String?   @map("education_cert_path") @db.VarChar(255)
 
-  @@map("teachers")
-}
+  hasHouseReg           Boolean?  @default(false) @map("has_house_reg")
+  houseRegCount         Int?      @map("house_reg_count")
+  houseRegPath          String?   @map("house_reg_path") @db.VarChar(255)
 
-model Subject {
-  id        String    @id @default(cuid())
-  code      String    @unique
-  name      String
-  credits   Int       @map("credit")
-  theoryHours Int?    @map("theory_hours")
-  practiceHours Int?  @map("practice_hours")
-  departmentId String? @map("department_id")
-  department Department? @relation(fields: [departmentId], references: [id])
-  teacherId String?
-  teacher   Teacher?  @relation(fields: [teacherId], references: [id])
-  classSubjects ClassSubject[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime?  @updatedAt
+  hasIdCard             Boolean?  @default(false) @map("has_id_card")
+  idCardCount           Int?      @map("id_card_count")
+  idCardPath            String?   @map("id_card_path") @db.VarChar(255)
 
-  @@map("subjects")
-}
+  hasAthleteCert        Boolean?  @default(false) @map("has_athlete_cert")
+  athleteCertCount      Int?      @map("athlete_cert_count")
+  athleteCertPath       String?   @map("athlete_cert_path") @db.VarChar(255)
 
-model Room {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  capacity  Int
-  type      String?
-  schedules Schedule[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime?   @updatedAt
+  hasNameChangeCert     Boolean?  @default(false) @map("has_name_change_cert")
+  nameChangeCertCount   Int?      @map("name_change_cert_count")
+  nameChangeCertPath    String?   @map("name_change_cert_path") @db.VarChar(255)
 
-  @@map("rooms")
-}
-
-
-
-model Schedule {
-  id        String   @id @default(cuid())
-  teacherId String?   @map("teacher_id")
-  teacher   Teacher?  @relation(fields: [teacherId], references: [id])
-  roomId    String?   @map("room_id")
-  room      Room?     @relation(fields: [roomId], references: [id])
-  subjectId String?   @map("subject_id")
-  dayOfWeek Int?      @map("day_of_week")
-  startTime String?   @map("start_period")
-  endTime   String?   @map("end_period")
-  term      String?
-  classLevel String?  @map("class_level")
-  classLevelId String? @map("class_level_id") // Added for relation if needed, or just keep string
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
-
-  @@map("schedule")
+  hasOtherDocs          Boolean?  @default(false) @map("has_other_docs")
+  otherDocsDesc         String?   @map("other_docs_desc") @db.VarChar(255)
+  otherDocsCount        Int?      @map("other_docs_count")
+  otherDocsPath         String?   @map("other_docs_path") @db.VarChar(255)
+  
+  // รูปถ่าย
+  photoPath             String?   @map("photo_path") @db.VarChar(255)
+  status                String    @default("รอสัมภาษณ์") @db.VarChar(50)
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  @@map("applicants")
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  username String  @unique
-  name     String
-  image    String? @db.LongText
-  password String?
-  role     String?
-
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  name      String   @db.VarChar(255)
+  image     String?  @db.VarChar(500)
+  role      String   @default("admin") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
   @@map("users")
 }
 
-model Student {
-  id   String @id @default(cuid())
-  name String
-  level String?
-  birthdate DateTime?
-  password  String?
-  departmentId String? @map("department_id")
-  department Department? @relation(fields: [departmentId], references: [id])
-  
-  @@map("students")
-}
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String   @db.VarChar(50)  // CREATE, UPDATE, DELETE, LOGIN
+  resource    String   @db.VarChar(50)  // Applicant, User, System
+  resourceId  String?  @map("resource_id") @db.VarChar(100)
+  details     String?  @db.Text         // JSON string or description
+  performedBy String?  @map("performed_by") @db.VarChar(100) // Username or IP
+  ipAddress   String?  @map("ip_address") @db.VarChar(50)
+  status      String   @default("SUCCESS") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-model Department {
-  id   String @id @default(cuid())
-  name String
-  teachers Teacher[]
-  students Student[]
-  subjects Subject[]
-  classLevels ClassLevel[]
-
-  @@map("departments")
-}
-
-model ClassLevel {
-  id   String @id @default(cuid())
-  name String
-  departmentId String? @map("department_id")
-  department Department? @relation(fields: [departmentId], references: [id])
-  classSubjects ClassSubject[]
-
-  @@map("class_levels")
-}
-
-model ClassSubject {
-  id   String @id @default(cuid())
-  name String?
-  subjectId String? @map("subject_id")
-  subject   Subject? @relation(fields: [subjectId], references: [id])
-  classLevelId String? @map("class_level_id")
-  classLevel ClassLevel? @relation(fields: [classLevelId], references: [id])
-  department String? // Legacy field?
-
-  @@map("class_subjects")
+  @@map("audit_logs")
 }

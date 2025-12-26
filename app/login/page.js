@@ -1,103 +1,19 @@
-// app/login/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import ConfirmModal from '../components/ConfirmModal';
+import Image from 'next/image';
+import Swal from 'sweetalert2';
+import { User, Lock, ArrowRight, Sun, Moon, Shield, Sparkles } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-
-// Floating Particle Component
-const FloatingParticle = ({ delay, duration, size, startX, startY, isDarkMode }) => (
-  <div
-    className={`absolute rounded-full transition-all duration-[2000ms] ${isDarkMode ? 'bg-blue-400/20' : 'bg-white/40'}`}
-    style={{
-      width: size,
-      height: size,
-      left: `${startX}%`,
-      top: `${startY}%`,
-      animation: `floatParticle ${duration}s ease-in-out ${delay}s infinite`,
-    }}
-  />
-);
-
-// Gradient Orb Component
-const GradientOrb = ({ className, isDarkMode }) => (
-  <div
-    className={`absolute rounded-full blur-3xl transition-all duration-[1500ms] ease-in-out ${className} ${isDarkMode ? 'opacity-30' : 'opacity-40'
-      }`}
-  />
-);
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [isThemeTransitioning, setIsThemeTransitioning] = useState(false);
-
-  const { isDarkMode, toggleTheme } = useTheme();
-  const { t, language, toggleLanguage } = useLanguage();
-  const [isLangOpen, setIsLangOpen] = useState(false);
-
-  const languages = [
-    { code: 'th', label: 'ภาษาไทย', flag: '🇹🇭' },
-    { code: 'en', label: 'English', flag: '🇬🇧' },
-    { code: 'zh', label: '中文', flag: '🇨🇳' },
-    { code: 'ja', label: '日本語', flag: '🇯🇵' },
-    { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  ];
-
-  const currentLang = languages.find(l => l.code === language) || languages[0];
-
-  const [confirmConfig, setConfirmConfig] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    confirmText: 'ตกลง',
-    type: 'success',
-    cancelText: null
-  });
-
   const router = useRouter();
-
-  // Mount animation
-  useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Generate particles with fixed positions (deterministic for React 19 strict mode)
-  const particles = [
-    { id: 0, delay: 0, duration: 12, size: 8, startX: 10, startY: 20 },
-    { id: 1, delay: 1, duration: 15, size: 6, startX: 80, startY: 15 },
-    { id: 2, delay: 2, duration: 10, size: 10, startX: 25, startY: 70 },
-    { id: 3, delay: 0.5, duration: 14, size: 5, startX: 60, startY: 40 },
-    { id: 4, delay: 3, duration: 11, size: 12, startX: 90, startY: 60 },
-    { id: 5, delay: 1.5, duration: 13, size: 7, startX: 15, startY: 85 },
-    { id: 6, delay: 2.5, duration: 16, size: 9, startX: 70, startY: 30 },
-    { id: 7, delay: 0.8, duration: 12, size: 6, startX: 45, startY: 55 },
-    { id: 8, delay: 1.2, duration: 14, size: 11, startX: 35, startY: 10 },
-    { id: 9, delay: 2.8, duration: 10, size: 8, startX: 55, startY: 80 },
-    { id: 10, delay: 0.3, duration: 15, size: 5, startX: 5, startY: 45 },
-    { id: 11, delay: 1.8, duration: 11, size: 10, startX: 85, startY: 75 },
-    { id: 12, delay: 3.2, duration: 13, size: 7, startX: 40, startY: 25 },
-    { id: 13, delay: 0.6, duration: 16, size: 9, startX: 20, startY: 90 },
-    { id: 14, delay: 2.2, duration: 12, size: 6, startX: 75, startY: 50 },
-    { id: 15, delay: 1.4, duration: 14, size: 8, startX: 50, startY: 5 },
-    { id: 16, delay: 2.6, duration: 10, size: 11, startX: 30, startY: 65 },
-    { id: 17, delay: 0.9, duration: 15, size: 5, startX: 65, startY: 35 },
-    { id: 18, delay: 1.6, duration: 11, size: 10, startX: 95, startY: 95 },
-    { id: 19, delay: 3.5, duration: 13, size: 7, startX: 12, startY: 58 },
-  ];
-
-  // Smooth theme toggle with transition state
-  const handleThemeToggle = () => {
-    setIsThemeTransitioning(true);
-    toggleTheme();
-    setTimeout(() => setIsThemeTransitioning(false), 1500);
-  };
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -110,357 +26,210 @@ export default function LoginPage() {
     });
 
     if (res?.ok && !res?.error) {
-      setConfirmConfig({
-        isOpen: true,
-        title: t('loginSuccess'),
-        message: t('loginWelcome'),
-        type: 'success',
-        confirmText: t('ok'),
-        cancelText: null,
-        onConfirm: () => router.push('/dashboard')
+      Swal.fire({
+        title: 'เข้าสู่ระบบสำเร็จ',
+        text: 'กำลังเข้าสู่ระบบจัดการ...',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
+        router.push('/dashboard');
       });
-      setTimeout(() => router.push('/dashboard'), 1500);
     } else {
-      setConfirmConfig({
-        isOpen: true,
-        title: t('loginFailed'),
-        message: t('loginError'),
-        type: 'danger',
-        confirmText: t('tryAgain'),
-        cancelText: null
+      Swal.fire({
+        title: 'เข้าสู่ระบบไม่สำเร็จ',
+        text: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'ลองอีกครั้ง'
       });
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={`relative min-h-screen w-full overflow-hidden transition-all duration-[1200ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${isDarkMode ? 'bg-[#030712]' : 'bg-gradient-to-br from-[#dbeafe] via-[#c7d2fe] to-[#fae8ff]'
-      }`}>
+    <div className={`min-h-screen relative flex items-center justify-center overflow-hidden font-prompt transition-colors duration-500 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
 
-      {/* ===== ANIMATED BACKGROUND ===== */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Premium Background */}
+      <div className="absolute inset-0 z-0">
+        {/* Base Gradient */}
+        <div className={`absolute inset-0 transition-all duration-700 ${isDarkMode
+            ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+            : 'bg-gradient-to-br from-red-900 via-red-800 to-orange-900'
+          }`} />
 
-        {/* Noise Texture Overlay */}
-        <div className={`absolute inset-0 z-30 mix-blend-overlay transition-opacity duration-[1500ms] ${isDarkMode ? 'opacity-[0.08]' : 'opacity-[0.15]'
-          } bg-[url('https://grainy-gradients.vercel.app/noise.svg')]`} />
-
-        {/* Morphing Gradient Background */}
-        <div className={`absolute -inset-[100%] z-0 blur-[120px] transition-all duration-[2000ms] ease-in-out ${isDarkMode
-          ? 'opacity-50 bg-[conic-gradient(from_180deg_at_50%_50%,_#1e3a5f_0deg,_#0f172a_90deg,_#312e81_180deg,_#0f172a_270deg,_#1e3a5f_360deg)]'
-          : 'opacity-60 bg-[conic-gradient(from_0deg_at_50%_50%,_#93c5fd_0deg,_#c4b5fd_90deg,_#f9a8d4_180deg,_#fcd34d_270deg,_#93c5fd_360deg)]'
-          }`}
-          style={{ animation: 'morphGradient 20s ease-in-out infinite' }}
-        />
-
-        {/* Gradient Orbs */}
-        <GradientOrb
-          isDarkMode={isDarkMode}
-          className={`w-[600px] h-[600px] -top-[200px] -left-[200px] ${isDarkMode
-            ? 'bg-gradient-to-br from-blue-600/40 to-violet-700/30'
-            : 'bg-gradient-to-br from-pink-300/60 to-rose-400/50'
-            }`}
-          style={{ animation: 'pulseOrb1 8s ease-in-out infinite' }}
-        />
-        <GradientOrb
-          isDarkMode={isDarkMode}
-          className={`w-[500px] h-[500px] -bottom-[150px] -right-[150px] ${isDarkMode
-            ? 'bg-gradient-to-tl from-purple-700/40 to-indigo-600/30'
-            : 'bg-gradient-to-tl from-cyan-300/60 to-blue-400/50'
-            }`}
-          style={{ animation: 'pulseOrb2 10s ease-in-out infinite' }}
-        />
-        <GradientOrb
-          isDarkMode={isDarkMode}
-          className={`w-[400px] h-[400px] top-[40%] left-[60%] ${isDarkMode
-            ? 'bg-gradient-to-r from-emerald-700/30 to-teal-600/20'
-            : 'bg-gradient-to-r from-amber-200/50 to-orange-300/40'
-            }`}
-          style={{ animation: 'pulseOrb3 12s ease-in-out infinite' }}
-        />
-
-        {/* Floating Particles */}
-        {particles.map((p) => (
-          <FloatingParticle key={p.id} {...p} isDarkMode={isDarkMode} />
-        ))}
-
-        {/* Grid Pattern */}
-        <div className={`absolute inset-0 transition-opacity duration-[1500ms] ${isDarkMode ? 'opacity-[0.03]' : 'opacity-[0.08]'
-          }`}
+        {/* Animated Grid Pattern */}
+        <div className={`absolute inset-0 transition-opacity duration-500 ${isDarkMode ? 'opacity-[0.03]' : 'opacity-[0.08]'}`}
           style={{
-            backgroundImage: isDarkMode
-              ? 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)'
-              : 'linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)',
-            backgroundSize: '50px 50px',
-          }}
-        />
-
-        {/* Shimmer Effect */}
-        <div
-          className={`absolute inset-0 z-10 transition-opacity duration-[1500ms] ${isDarkMode ? 'opacity-30' : 'opacity-20'}`}
-          style={{
-            background: isDarkMode
-              ? 'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(99,102,241,0.1) 50%, transparent 60%, transparent 100%)'
-              : 'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%, transparent 100%)',
-            backgroundSize: '400% 400%',
-            animation: 'shimmer 8s ease-in-out infinite',
-          }}
-        />
-      </div>
-
-      {/* ===== THEME TOGGLE BUTTON ===== */}
-      <button
-        onClick={handleThemeToggle}
-        className={`absolute top-6 right-6 p-4 rounded-2xl shadow-2xl transition-all duration-500 z-50 
-          hover:scale-110 active:scale-95 border-2 backdrop-blur-xl overflow-hidden group
-          ${isDarkMode
-            ? 'bg-slate-800/60 border-white/20 text-yellow-300 hover:bg-slate-700/70 hover:border-yellow-400/30 shadow-yellow-500/10'
-            : 'bg-white/70 border-white/50 text-amber-500 hover:bg-white/90 hover:border-amber-400/50 shadow-orange-500/20'
-          }
-          ${isThemeTransitioning ? 'animate-pulse' : ''}
-        `}
-      >
-        {/* Ripple effect on click */}
-        <span className="absolute inset-0 rounded-2xl overflow-hidden">
-          <span className={`absolute inset-0 transition-transform duration-700 scale-0 group-active:scale-100 rounded-2xl ${isDarkMode ? 'bg-yellow-400/20' : 'bg-amber-400/20'
-            }`} />
-        </span>
-
-        {/* Icon with rotation animation */}
-        <div className={`relative transition-transform duration-700 ${isThemeTransitioning ? 'rotate-[360deg]' : ''}`}>
-          {isDarkMode ? (
-            <svg className="w-6 h-6 drop-shadow-[0_0_12px_rgba(253,224,71,0.9)] transition-all duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)] transition-all duration-500 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          )}
+            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px'
+          }}>
         </div>
-      </button>
 
-      {/* ===== LANGUAGE SELECTOR ===== */}
-      <div className="absolute top-6 right-24 z-50">
-        <button
-          onClick={() => setIsLangOpen(!isLangOpen)}
-          className={`p-4 rounded-2xl shadow-2xl transition-all duration-500 
-            hover:scale-110 active:scale-95 border-2 backdrop-blur-xl overflow-hidden group flex items-center gap-2
-            ${isDarkMode
-              ? 'bg-slate-800/60 border-white/20 text-blue-300 hover:bg-slate-700/70 hover:border-blue-400/30 shadow-blue-500/10'
-              : 'bg-white/70 border-white/50 text-blue-500 hover:bg-white/90 hover:border-blue-400/50 shadow-blue-500/20'
-            }`}
-        >
-          <span className="text-xl">{currentLang.flag}</span>
-        </button>
+        {/* Floating Orbs */}
+        <div className={`absolute top-[-15%] right-[-5%] w-[500px] h-[500px] rounded-full blur-[120px] animate-pulse ${isDarkMode ? 'bg-blue-600/20' : 'bg-yellow-400/20'}`} />
+        <div className={`absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse ${isDarkMode ? 'bg-purple-600/15' : 'bg-red-500/20'}`} />
+        <div className={`absolute top-[50%] right-[10%] w-[300px] h-[300px] rounded-full blur-[100px] ${isDarkMode ? 'bg-cyan-500/10' : 'bg-orange-400/15'}`} />
 
-        {/* Dropdown */}
-        {isLangOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsLangOpen(false)} />
-            <div className={`absolute top-full right-0 mt-2 rounded-2xl shadow-2xl overflow-hidden z-50 min-w-[160px] border-2 backdrop-blur-xl
-              ${isDarkMode
-                ? 'bg-slate-900/90 border-white/10'
-                : 'bg-white/90 border-white/50'
-              }`}>
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => { toggleLanguage(lang.code); setIsLangOpen(false); }}
-                  className={`w-full text-left px-4 py-3 text-sm flex items-center gap-3 transition-all
-                    ${language === lang.code
-                      ? (isDarkMode ? 'bg-blue-600/30 text-blue-300 font-bold' : 'bg-blue-100 text-blue-600 font-bold')
-                      : (isDarkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-slate-700')
-                    }`}
-                >
-                  <span className="text-lg">{lang.flag}</span>
-                  <span>{lang.label}</span>
-                  {language === lang.code && <span className="ml-auto">✓</span>}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Diagonal Lines Decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className={`absolute top-0 right-0 w-[800px] h-[2px] ${isDarkMode ? 'bg-gradient-to-l from-cyan-500/30 to-transparent' : 'bg-gradient-to-l from-yellow-400/40 to-transparent'} transform rotate-45 translate-x-[200px] translate-y-[100px]`} />
+          <div className={`absolute bottom-0 left-0 w-[600px] h-[2px] ${isDarkMode ? 'bg-gradient-to-r from-purple-500/30 to-transparent' : 'bg-gradient-to-r from-red-300/40 to-transparent'} transform -rotate-45 -translate-x-[100px] translate-y-[-200px]`} />
+        </div>
       </div>
 
-      {/* ===== MAIN LOGIN CARD ===== */}
-      <div className="relative flex min-h-screen flex-col items-center justify-center p-4 z-20">
-        <div
-          className={`w-full max-w-[460px] rounded-[2.5rem] p-10 backdrop-blur-[60px] border-2 
-            transition-all duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)]
-            ${isMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95'}
-            ${isDarkMode
-              ? 'bg-slate-900/50 border-white/10 text-white shadow-[0_0_80px_-20px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]'
-              : 'bg-white/60 border-white/80 text-slate-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]'
-            }
-          `}
+      {/* Theme Toggle - Top Right Corner */}
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={toggleTheme}
+          className={`p-3 rounded-2xl backdrop-blur-md transition-all duration-300 shadow-lg hover:scale-105 ${isDarkMode
+              ? 'bg-slate-800/80 text-yellow-400 hover:bg-slate-700/80 border border-slate-700'
+              : 'bg-white/20 text-white hover:bg-white/30 border border-white/20'
+            }`}
         >
-          {/* Header Section with Animations */}
-          <div className={`mb-10 flex flex-col items-center text-center transition-all duration-700 delay-100 ${isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-            {/* Animated Logo */}
-            <div
-              className={`group relative mb-6 flex h-28 w-28 items-center justify-center rounded-[1.75rem] 
-                shadow-2xl transition-all duration-500 hover:rotate-3 hover:scale-110 border-2 backdrop-blur-xl
-                cursor-pointer
-                ${isDarkMode
-                  ? 'bg-gradient-to-br from-slate-800/80 to-slate-900/80 border-white/20 shadow-indigo-500/20 hover:shadow-indigo-500/40'
-                  : 'bg-gradient-to-br from-white/90 to-blue-50/90 border-white/60 shadow-blue-500/20 hover:shadow-blue-500/40'
-                }
-              `}
-            >
-              {/* Glow ring animation */}
-              <div className={`absolute inset-0 rounded-[1.75rem] transition-opacity duration-500 ${isDarkMode ? 'bg-gradient-to-r from-blue-500/0 via-indigo-500/20 to-purple-500/0' : 'bg-gradient-to-r from-pink-500/0 via-rose-400/20 to-orange-500/0'
-                } animate-pulse opacity-60 group-hover:opacity-100`} />
+          {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
+        </button>
+      </div>
 
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="56"
-                height="56"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#D32F2F"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="relative z-10 drop-shadow-[0_5px_15px_rgba(211,47,47,0.5)] transition-transform duration-500 group-hover:scale-110"
-              >
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                <path d="M6 12v5c3 3 9 3 12 0v-5" />
-              </svg>
-            </div>
+      {/* Login Card */}
+      <div className="relative z-10 w-full max-w-md p-4">
+        <div className={`relative backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ${isDarkMode
+            ? 'bg-slate-900/70 border border-slate-700/50'
+            : 'bg-white/90 border border-white/50'
+          }`}>
 
-            <h1 className={`text-2xl font-black tracking-tight transition-all duration-500 ${isDarkMode ? 'drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]' : 'drop-shadow-sm'
-              }`}>
-              {t('welcome')}
-            </h1>
-            <p className={`mt-3 text-sm font-medium transition-colors duration-700 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'
-              }`}>
-              {t('loginSubtitle')}
-            </p>
-          </div>
+          {/* Top Gradient Bar */}
+          <div className={`absolute top-0 left-0 w-full h-1.5 ${isDarkMode
+              ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500'
+              : 'bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500'
+            }`} />
 
-          {/* Login Form with Staggered Animations */}
-          <form onSubmit={handleLogin} className="space-y-6">
-            {/* Username Field */}
-            <div className={`group space-y-2 transition-all duration-700 delay-200 ${isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}>
-              <label className={`ml-4 text-xs font-bold uppercase tracking-widest transition-all duration-300 ${isDarkMode
-                ? 'text-slate-400 group-focus-within:text-blue-400 group-focus-within:drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]'
-                : 'text-slate-500 group-focus-within:text-blue-600'
+          {/* Decorative Corner Accents */}
+          <div className={`absolute top-0 right-0 w-32 h-32 ${isDarkMode ? 'bg-cyan-500/5' : 'bg-yellow-500/10'} rounded-bl-full`} />
+          <div className={`absolute bottom-0 left-0 w-24 h-24 ${isDarkMode ? 'bg-purple-500/5' : 'bg-red-500/10'} rounded-tr-full`} />
+
+          <div className="relative p-8 md:p-10">
+            {/* Logo & Header */}
+            <div className="flex flex-col items-center text-center mb-8">
+              {/* Logo with Glow Effect */}
+              <div className="relative mb-5">
+                <div className={`absolute inset-0 rounded-full blur-xl ${isDarkMode ? 'bg-cyan-500/30' : 'bg-yellow-500/30'} scale-110`} />
+                <div className="relative w-28 h-28 drop-shadow-2xl">
+                  <Image
+                    src="/images/logo.png"
+                    alt="Logo"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+
+              {/* Title with Gradient */}
+              <h1 className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-slate-800'
                 }`}>
-                {t('usernameLogin')}
-              </label>
-              <div className="relative transform transition-all duration-300 group-focus-within:scale-[1.02]">
-                <input
-                  type="text"
-                  required
-                  className={`block w-full rounded-2xl border-2 py-4 pl-5 pr-4 text-lg font-medium outline-none 
-                    transition-all duration-500 backdrop-blur-xl
-                    focus:ring-4 focus:ring-offset-0
-                    ${isDarkMode
-                      ? 'bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 focus:bg-slate-800/70'
-                      : 'bg-white/50 border-white/60 text-slate-800 placeholder:text-slate-400 focus:border-blue-400/50 focus:ring-blue-400/20 focus:bg-white/80'
-                    }
-                  `}
-                  placeholder={t('usernameLogin')}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
+                มหาวิทยาลัยการกีฬาแห่งชาติ
+              </h1>
+              <p className={`text-sm font-light mt-1.5 tracking-wide transition-colors duration-300 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                National Sports University
+              </p>
+
+              {/* Admin Badge */}
+              <div className={`mt-5 px-4 py-1.5 text-xs font-semibold rounded-full flex items-center gap-2 transition-all duration-300 ${isDarkMode
+                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                  : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                <Shield size={14} />
+                <span>สำหรับเจ้าหน้าที่ (Admin Only)</span>
               </div>
             </div>
 
-            {/* Password Field */}
-            <div className={`group space-y-2 transition-all duration-700 delay-300 ${isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}>
-              <label className={`ml-4 text-xs font-bold uppercase tracking-widest transition-all duration-300 ${isDarkMode
-                ? 'text-slate-400 group-focus-within:text-blue-400 group-focus-within:drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]'
-                : 'text-slate-500 group-focus-within:text-blue-600'
-                }`}>
-                {t('passwordLogin')}
-              </label>
-              <div className="relative transform transition-all duration-300 group-focus-within:scale-[1.02]">
-                <input
-                  type="password"
-                  required
-                  className={`block w-full rounded-2xl border-2 py-4 pl-5 pr-4 text-lg font-medium outline-none 
-                    transition-all duration-500 backdrop-blur-xl
-                    focus:ring-4 focus:ring-offset-0
-                    ${isDarkMode
-                      ? 'bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 focus:bg-slate-800/70'
-                      : 'bg-white/50 border-white/60 text-slate-800 placeholder:text-slate-400 focus:border-blue-400/50 focus:ring-blue-400/20 focus:bg-white/80'
-                    }
-                  `}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className={`text-sm font-semibold ml-1 flex items-center gap-2 transition-colors duration-300 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                  <User size={14} />
+                  ชื่อผู้ใช้ (Username)
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className={`block w-full rounded-xl px-4 py-3.5 shadow-sm ring-1 ring-inset transition-all outline-none text-base ${isDarkMode
+                        ? 'bg-slate-800/50 text-white ring-slate-700 placeholder:text-slate-500 focus:bg-slate-800 focus:ring-cyan-500'
+                        : 'bg-slate-50/80 text-slate-800 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-red-500'
+                      }`}
+                    placeholder="กรอกชื่อผู้ใช้งาน"
+                  />
+                  <div className={`absolute inset-0 rounded-xl transition-opacity pointer-events-none ${isDarkMode ? 'bg-gradient-to-r from-cyan-500/5 to-purple-500/5' : 'bg-gradient-to-r from-red-500/5 to-orange-500/5'
+                    } opacity-0 group-focus-within:opacity-100`} />
+                </div>
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <div className={`transition-all duration-700 delay-400 ${isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}>
+              <div className="space-y-2">
+                <label className={`text-sm font-semibold ml-1 flex items-center gap-2 transition-colors duration-300 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                  <Lock size={14} />
+                  รหัสผ่าน (Password)
+                </label>
+                <div className="relative group">
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`block w-full rounded-xl px-4 py-3.5 shadow-sm ring-1 ring-inset transition-all outline-none text-base ${isDarkMode
+                        ? 'bg-slate-800/50 text-white ring-slate-700 placeholder:text-slate-500 focus:bg-slate-800 focus:ring-cyan-500'
+                        : 'bg-slate-50/80 text-slate-800 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-red-500'
+                      }`}
+                    placeholder="กรอกรหัสผ่าน"
+                  />
+                  <div className={`absolute inset-0 rounded-xl transition-opacity pointer-events-none ${isDarkMode ? 'bg-gradient-to-r from-cyan-500/5 to-purple-500/5' : 'bg-gradient-to-r from-red-500/5 to-orange-500/5'
+                    } opacity-0 group-focus-within:opacity-100`} />
+                </div>
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative mt-6 w-full overflow-hidden rounded-2xl p-[2px] 
-                  shadow-xl shadow-red-500/30 transition-all duration-500 
-                  hover:scale-[1.03] hover:shadow-2xl hover:shadow-red-500/40 
-                  active:scale-[0.98]
-                  bg-gradient-to-r from-[#D32F2F] via-[#E53935] to-[#FF5252]
-                  disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className={`w-full rounded-xl py-4 font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 group mt-4 ${isDarkMode
+                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white hover:shadow-cyan-500/25 hover:shadow-xl'
+                    : 'bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-orange-600 text-white hover:shadow-red-500/25 hover:shadow-xl'
+                  } active:scale-[0.98]`}
               >
-                {/* Animated shine effect */}
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
-                <div className={`relative flex h-full w-full items-center justify-center rounded-[14px] 
-                  bg-gradient-to-br from-[#D32F2F] to-[#B71C1C] px-6 py-4 
-                  transition-all duration-300 backdrop-blur-sm
-                  ${isLoading ? '' : 'group-hover:from-[#E53935] group-hover:to-[#C62828]'}
-                `}>
-                  {isLoading ? (
-                    <div className="flex items-center gap-3">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="text-white font-bold">{t('loggingIn')}</span>
-                    </div>
-                  ) : (
-                    <span className="text-lg font-bold text-white flex items-center gap-2 group-hover:gap-3 transition-all duration-300">
-                      {t('loginButton')}
-                      <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </span>
-                  )}
-                </div>
+                {isLoading ? (
+                  <span className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <>
+                    <span>เข้าสู่ระบบ</span>
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
-            </div>
-          </form>
+            </form>
 
-          {/* Footer */}
-          <div className={`mt-10 text-center text-xs font-semibold tracking-wide transition-all duration-700 delay-500 ${isMounted ? 'opacity-60' : 'opacity-0'
-            } ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            {t('copyright')}
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-slate-200/10">
+              <div className="flex items-center justify-center gap-2">
+                <Sparkles size={12} className={isDarkMode ? 'text-cyan-500' : 'text-red-500'} />
+                <p className={`text-xs transition-colors duration-300 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  © 2026 ระบบรับสมัครนักศึกษาออนไลน์
+                </p>
+                <Sparkles size={12} className={isDarkMode ? 'text-cyan-500' : 'text-red-500'} />
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Subtle Floating Text Below Card */}
+        <p className={`text-center text-xs mt-6 transition-colors duration-300 ${isDarkMode ? 'text-slate-600' : 'text-white/60'}`}>
+          Secure Login Portal • มหาวิทยาลัยการกีฬาแห่งชาติ
+        </p>
       </div>
-
-      {/* Modal */}
-      <ConfirmModal
-        isOpen={confirmConfig.isOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        confirmText={confirmConfig.confirmText}
-        cancelText={confirmConfig.cancelText}
-        type={confirmConfig.type}
-        onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
-      />
-
-
     </div>
   );
 }

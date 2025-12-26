@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import bcrypt from 'bcryptjs';
+import { logAction } from '@/lib/logger';
 
 export async function POST(request) {
     try {
@@ -7,6 +9,28 @@ export async function POST(request) {
 
         // Helper: แปลง undefined เป็น null
         const v = (val) => (val === undefined ? null : val);
+
+        // Helper: Validate Password Complexity
+        const validatePassword = (password) => {
+            if (!password) return true; // Allow if password is not required/provided (handled by default values later)
+            const minLength = 8;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumbers = /\d/.test(password);
+            return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers;
+        };
+
+        // Helper: Hash Password
+        const hashPassword = async (password) => {
+            return await bcrypt.hash(password, 10);
+        };
+
+        // Strict Password Check
+        if (data.password && !validatePassword(data.password)) {
+            return NextResponse.json({
+                message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร และประกอบด้วยตัวพิมพ์ใหญ่, ตัวพิมพ์เล็ก และตัวเลข'
+            }, { status: 400 });
+        }
 
         // Helper: หา Department ID
         const getDeptId = async (deptName) => {
@@ -34,53 +58,41 @@ export async function POST(request) {
                 checkParams = [v(data.id)];
                 const deptIdStd = await getDeptId(data.department);
                 const classLevelIdStd = await getClassLevelId(data.level);
-                // Use default dept=1 and classLevel=1 if not found
+
+                const pwd = data.password ? await hashPassword(data.password) : await hashPassword('1234');
+
                 insertSql = 'INSERT INTO students (studentId, name, birthDate, password, departmentId, classLevelId, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                insertParams = [v(data.id), v(data.name), v(data.birthdate) || null, v(data.password) || '1234', deptIdStd || 1, classLevelIdStd || 1, new Date()];
+                insertParams = [v(data.id), v(data.name), v(data.birthdate) || null, pwd, deptIdStd || 1, classLevelIdStd || 1, new Date()];
                 break;
             }
 
             case 'teachers': {
-                // DB columns: teacherId, name, birthDate, officeRoom, password, maxHoursPerWeek, departmentId, unavailableTimes, updatedAt
+                // DB columns: teacherId, name, birthDate, officeRoom, password, maxHoursPerWeek, departmentId, updatedAt
                 checkSql = 'SELECT id FROM teachers WHERE teacherId = ?';
                 checkParams = [v(data.id)];
                 const deptIdTch = await getDeptId(data.department);
 
-                // Parse unavailable_times from text format (e.g. "จันทร์:1,2 พุธ:7,8,9") to JSON
-                let unavailableTimesJson = null;
-                if (data.unavailable_times) {
-                    if (typeof data.unavailable_times === 'string') {
-                        const dayMap = { 'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัสบดี': 4, 'ศุกร์': 5 };
-                        const parts = data.unavailable_times.trim().split(/\s+/);
-                        const parsed = [];
-                        for (const part of parts) {
-                            const [dayName, periodsStr] = part.split(':');
-                            const dayNum = dayMap[dayName];
-                            if (dayNum && periodsStr) {
-                                const periods = periodsStr.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
-                                if (periods.length > 0) parsed.push({ day: dayNum, periods });
-                            }
-                        }
-                        unavailableTimesJson = parsed.length > 0 ? JSON.stringify(parsed) : null;
-                    } else {
-                        // Already JSON array
-                        unavailableTimesJson = JSON.stringify(data.unavailable_times);
-                    }
-                }
+                const pwd = data.password ? await hashPassword(data.password) : await hashPassword('1234');
 
-                // Use default dept=1 if not found
-                insertSql = 'INSERT INTO teachers (teacherId, name, birthDate, officeRoom, password, maxHoursPerWeek, departmentId, unavailableTimes, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                insertParams = [v(data.id), v(data.name), v(data.birthdate) || null, v(data.room) || null, v(data.password) || v(data.id), v(data.max_hours) || 20, deptIdTch || 1, unavailableTimesJson, new Date()];
+                // No unavailableTimes in DB schema based on screenshot
+                insertSql = 'INSERT INTO teachers (teacherId, name, birthDate, officeRoom, password, maxHoursPerWeek, departmentId, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+                insertParams = [v(data.id), v(data.name), v(data.birthdate) || null, v(data.room), pwd, v(data.max_hours) || 20, deptIdTch || 1, new Date()];
                 break;
             }
 
             case 'subjects': {
-                // DB columns: code, name, credit, theoryHours, practiceHours, departmentId, updatedAt
+                // DB columns: code, name, credit, theoryHours, practiceHours, teacherId, departmentId, updatedAt
                 checkSql = 'SELECT id FROM subjects WHERE code = ?';
                 checkParams = [v(data.code)];
                 const deptIdSub = await getDeptId(data.department);
-                insertSql = 'INSERT INTO subjects (code, name, credit, theoryHours, practiceHours, departmentId, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                insertParams = [v(data.code), v(data.name), v(data.credit) || 3, v(data.theory) || 0, v(data.practice) || 0, deptIdSub, new Date()];
+                // Get teacherId from teacher name
+                let teacherId = null;
+                if (data.teacher && !data.teacher.startsWith('--')) {
+                    const [teacherRows] = await db.execute('SELECT id FROM teachers WHERE name = ?', [data.teacher]);
+                    if (teacherRows.length > 0) teacherId = teacherRows[0].id;
+                }
+                insertSql = 'INSERT INTO subjects (code, name, credit, theoryHours, practiceHours, teacherId, departmentId, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+                insertParams = [v(data.code), v(data.name), v(data.credit) || 3, v(data.theory) || 0, v(data.practice) || 0, teacherId, deptIdSub, new Date()];
                 break;
             }
 
@@ -99,17 +111,21 @@ export async function POST(request) {
                 break;
 
             case 'users':
-                checkSql = 'SELECT id FROM users WHERE username = ?';
-                checkParams = [v(data.username)];
+
                 insertSql = 'INSERT INTO users (username, name, password, role, updatedAt) VALUES (?, ?, ?, ?, ?)';
-                insertParams = [v(data.username), v(data.name), v(data.password), 'admin', new Date()];
+                insertParams = [v(data.username), v(data.name), pwd, 'admin', new Date()];
                 break;
 
+            case 'levels':
             case 'class_levels':
-                const deptIdLevel = await getDeptId(data.department_name);
+                const deptName = data.department || data.department_name;
+                const deptIdLevel = await getDeptId(deptName);
+                if (!deptIdLevel) return NextResponse.json({ message: 'ไม่พบแผนกที่ระบุ' + (deptName ? `: ${deptName}` : '') }, { status: 400 });
+
                 checkSql = 'SELECT id FROM class_levels WHERE name = ? AND departmentId = ?';
                 checkParams = [v(data.level), deptIdLevel];
-                insertSql = 'INSERT INTO class_levels (id, name, departmentId, updatedAt) VALUES (UUID(), ?, ?, ?)';
+                // Assuming Auto-Increment for ID
+                insertSql = 'INSERT INTO class_levels (name, departmentId, updatedAt) VALUES (?, ?, ?)';
                 insertParams = [v(data.level), deptIdLevel, new Date()];
                 break;
 
@@ -132,6 +148,16 @@ export async function POST(request) {
         // 2. บันทึกข้อมูล
         const finalParams = insertParams.map(p => (p === undefined ? null : p));
         await db.execute(insertSql, finalParams);
+
+        // Audit Log
+        try {
+            await logAction({
+                action: 'CREATE',
+                resource: type,
+                details: `Created new ${type}: ${JSON.stringify(data.name || data.id || 'Unknown')}`,
+                performedBy: 'Admin'
+            });
+        } catch (e) { console.error("Audit log error", e); }
 
         return NextResponse.json({ message: 'บันทึกข้อมูลสำเร็จเรียบร้อย' }, { status: 200 });
 

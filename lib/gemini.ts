@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 interface ScheduleInput {
   teachers: any[];
@@ -12,18 +12,21 @@ export async function generateSchedule(data: ScheduleInput) {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not set");
   }
-  const genAI = new GoogleGenerativeAI(apiKey);
+  
+  // Initialize GoogleGenAI with the new library pattern
+  const ai = new GoogleGenAI({ apiKey });
+
+  // List of models to try in order of preference/speed
   const models = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-2.0-flash-lite-preview-02-05"
+    "gemini-2.0-flash", 
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
   ];
 
   for (const modelName of models) {
     try {
       console.log(`Attempting to generate schedule with model: ${modelName}`);
-      const model = genAI.getGenerativeModel({ model: modelName });
-
+      
       const prompt = `
         You are an expert school scheduler. Create a conflict-free schedule for the following data:
         
@@ -54,16 +57,24 @@ export async function generateSchedule(data: ScheduleInput) {
         Do not include markdown formatting like \`\`\`json. Just the raw JSON.
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      // Call API using the new structure
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+      });
 
-      console.log(`Model ${modelName} response:`, text.substring(0, 100) + "...");
+      // Access text directly from the response object
+      const text = response.text;
 
-      // Clean up potential markdown code blocks if Gemini adds them despite instructions
-      const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      console.log(`Model ${modelName} response:`, text?.substring(0, 100) + "...");
+
+      // Clean up potential markdown code blocks
+      const cleanText = text?.replace(/```json/g, "").replace(/```/g, "").trim();
+      
+      if (!cleanText) throw new Error("Empty response received from AI");
 
       return JSON.parse(cleanText);
+
     } catch (error: any) {
       console.error(`Error with model ${modelName}:`, error.message);
       // If this was the last model, throw the error
@@ -75,4 +86,3 @@ export async function generateSchedule(data: ScheduleInput) {
     }
   }
 }
-

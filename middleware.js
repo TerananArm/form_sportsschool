@@ -8,7 +8,7 @@ const securityHeaders = {
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Permissions-Policy': 'camera=*, microphone=*, geolocation=()',
 };
 
 export async function middleware(request) {
@@ -40,8 +40,8 @@ export async function middleware(request) {
         return addSecurityHeaders(NextResponse.next());
     }
 
-    // Get secret from env or fallback to hardcoded (must match authOptions)
-    const secret = process.env.NEXTAUTH_SECRET || 'super-secret-key-123456789';
+    // Use env secret, with fallback for development only
+    const secret = process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-secret-key-change-in-production' : undefined);
 
     // Check for session token
     const token = await getToken({

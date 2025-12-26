@@ -1,44 +1,29 @@
-// app/components/Sidebar.js
 'use client';
+import { useState } from 'react';
 import {
-  LayoutDashboard, Calendar, DoorOpen, Users,
-  UserSquare2, BookOpen, Building2, ListChecks, UserCog,
-  Menu, LogOut, GraduationCap, Globe, HelpCircle
+  LayoutDashboard, Database, Menu, GraduationCap, ChevronDown,
+  LogOut
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useSound } from '../context/SoundContext';
 import { useSession, signOut } from 'next-auth/react';
-import LanguageSelector from './LanguageSelector';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { isSidebarCollapsed, toggleSidebar, isDarkMode } = useTheme();
-  const { language, t } = useLanguage();
-  const { play } = useSound();
   const { data: session } = useSession();
-  const role = session?.user?.role || 'student'; // Safety default
 
-  const allMenuItems = [
-    { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'teacher', 'student'] },
-    { name: t('schedule'), icon: Calendar, path: '/dashboard/schedule', roles: ['admin', 'teacher', 'student'] },
-    { name: t('rooms'), icon: DoorOpen, path: '/dashboard/rooms', roles: ['admin'] },
-    { name: t('students'), icon: Users, path: '/dashboard/students', roles: ['admin'] },
-    { name: t('teachers'), icon: UserSquare2, path: '/dashboard/teachers', roles: ['admin'] },
-    { name: t('subjects'), icon: BookOpen, path: '/dashboard/subjects', roles: ['admin'] },
-    { name: t('departments'), icon: Building2, path: '/dashboard/departments', roles: ['admin'] },
-    { name: t('levels'), icon: GraduationCap, path: '/dashboard/levels', roles: ['admin'] },
-    { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum', roles: ['admin'] },
-    { name: t('users'), icon: UserCog, path: '/dashboard/users', roles: ['admin'] },
-    { name: language === 'th' ? 'ช่วยเหลือ' : 'Help', icon: HelpCircle, path: '/dashboard/help', roles: ['admin', 'teacher', 'student'] },
+  const menuItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'เพิ่ม/ดูข้อมูล', icon: Database, path: '/dashboard/applicants' },
   ];
 
-  const menuItems = allMenuItems.filter(item => item.roles.includes(role));
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/login' });
+  };
 
   return (
-    // ✅ Apple Launchpad Style: เบลอหนัก (blur-[50px]) + สีเทาด้าน (bg-gray-500/30)
     <>
       {/* Mobile Backdrop */}
       <div
@@ -65,12 +50,12 @@ export default function Sidebar() {
               <GraduationCap size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg leading-none tracking-wide drop-shadow-sm">EduSched AI</h1>
+              <h1 className="font-bold text-lg leading-none tracking-wide drop-shadow-sm">System Admin</h1>
             </div>
           </div>
 
           <button
-            onClick={() => { play('click'); toggleSidebar(); }}
+            onClick={() => { toggleSidebar(); }}
             className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarCollapsed ? 'mx-auto' : ''}`}
           >
             <Menu size={20} />
@@ -78,40 +63,33 @@ export default function Sidebar() {
         </div>
 
         {/* Menu List */}
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar h-[calc(100vh-160px)]">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar h-[calc(100vh-160px)]">
           {menuItems.map((item) => {
-            const isActive = item.path === '/dashboard'
-              ? pathname === item.path
-              : pathname.startsWith(item.path);
+            const isActive = pathname === item.path;
 
             return (
-              <Link
-                key={item.path}
-                href={item.path}
-                onClick={() => play('navigate')}
-                className={`group flex items-center transition-all duration-300 relative overflow-hidden rounded-xl mb-1
-                ${isSidebarCollapsed ? 'justify-center py-4' : 'px-4 py-3'}
-                ${isActive
-                    ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30'
-                    : 'hover:bg-white/20 hover:text-red-600'
-                  }
-              `}
-              >
-                <item.icon size={20} className={`shrink-0 transition-colors duration-300 ${isActive ? 'text-white' : ''}`} />
-
-                <span className={`ml-4 text-sm font-medium whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'w-0 opacity-0 hidden translate-x-[-10px]' : 'w-auto opacity-100 translate-x-0'}`}>
-                  {item.name}
-                </span>
-              </Link>
+              <div key={item.path}>
+                <Link
+                  href={item.path}
+                  className={`group flex items-center transition-all duration-300 relative overflow-hidden rounded-xl mb-1
+                    ${isSidebarCollapsed ? 'justify-center py-4' : 'px-4 py-3'}
+                    ${isActive
+                      ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30'
+                      : 'hover:bg-white/20 hover:text-red-600'
+                    }
+                  `}
+                >
+                  <item.icon size={20} className={`shrink-0 transition-colors duration-300 ${isActive ? 'text-white' : ''}`} />
+                  <span className={`ml-4 text-sm font-medium whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                    {item.name}
+                  </span>
+                </Link>
+              </div>
             );
           })}
         </nav>
 
-        {/* Footer - Language Toggle Only */}
-        <div className={`absolute bottom-0 w-full p-4 border-t backdrop-blur-md transition-colors duration-500 ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-white/10 border-white/20'}`}>
-          {/* Language Selector */}
-          <LanguageSelector isSidebarCollapsed={isSidebarCollapsed} />
-        </div>
+
       </aside>
     </>
   );

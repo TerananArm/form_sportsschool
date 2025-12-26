@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: nextjs_prod_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=host.docker.internal # Adjust if using a separate db container
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always

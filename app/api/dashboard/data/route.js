@@ -18,7 +18,7 @@ export async function GET(request) {
             switch (type) {
                 case 'students':
                     query = `
-                        SELECT s.id, s.studentId, s.name, d.name as department, cl.name as level, s.birthDate as birthdate 
+                        SELECT s.id, s.name, d.name as department, cl.name as level, s.birthdate 
                         FROM students s 
                         LEFT JOIN departments d ON s.departmentId = d.id 
                         LEFT JOIN class_levels cl ON s.classLevelId = cl.id
@@ -27,10 +27,10 @@ export async function GET(request) {
                     break;
                 case 'teachers':
                     query = `
-                        SELECT t.id, t.teacherId, t.name, d.name as department, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times
+                        SELECT t.teacherId as id, t.teacherId, t.name, d.name as department, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times
                         FROM teachers t 
                         LEFT JOIN departments d ON t.departmentId = d.id 
-                        WHERE t.id = ?
+                        WHERE t.teacherId = ?
                     `;
                     break;
                 case 'subjects':
@@ -52,7 +52,7 @@ export async function GET(request) {
             switch (type) {
                 case 'students':
                     query = `
-                    SELECT s.id, s.studentId, s.name, d.name as dept, cl.name as level, s.birthDate as birthdate 
+                    SELECT s.id, s.name, d.name as dept, cl.name as level, s.birthdate 
                     FROM students s 
                     LEFT JOIN departments d ON s.departmentId = d.id 
                     LEFT JOIN class_levels cl ON s.classLevelId = cl.id
@@ -61,7 +61,7 @@ export async function GET(request) {
                     break;
                 case 'teachers':
                     query = `
-                    SELECT t.id, t.teacherId, t.name, d.name as dept, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times 
+                    SELECT t.teacherId as id, t.name, d.name as dept, t.officeRoom as room, t.maxHoursPerWeek as max_hours, t.birthDate as birthdate, t.unavailableTimes as unavailable_times 
                     FROM teachers t 
                     LEFT JOIN departments d ON t.departmentId = d.id 
                     ORDER BY t.id ASC
@@ -69,9 +69,11 @@ export async function GET(request) {
                     break;
                 case 'subjects':
                     query = `
-                    SELECT s.id, s.code, s.name, s.credit, s.theoryHours as theory_hours, s.practiceHours as practice_hours, d.name as dept 
+                    SELECT s.id, s.code, s.name, s.credit, s.theoryHours as theory_hours, s.practiceHours as practice_hours, 
+                           d.name as dept, t.name as teacher 
                     FROM subjects s 
                     LEFT JOIN departments d ON s.departmentId = d.id 
+                    LEFT JOIN teachers t ON s.teacherId = t.id
                     ORDER BY s.code ASC
                 `;
                     break;
@@ -84,6 +86,7 @@ export async function GET(request) {
                     break;
                 case 'rooms': query = 'SELECT id, name, type, capacity FROM rooms ORDER BY name ASC'; break;
                 case 'departments': query = 'SELECT id, name FROM departments ORDER BY id ASC'; break;
+                case 'levels':
                 case 'class_levels':
                     query = `
                     SELECT cl.id, cl.name as level, cl.departmentId, d.name as department_name,

@@ -92,7 +92,7 @@ export const LanguageProvider = ({ children }) => {
             chatWelcome: "สวัสดีครับ! ผมคือผู้ช่วย AI 🤖\nมีอะไรให้ผมช่วยเกี่ยวกับการจัดตารางสอนหรือข้อมูลวิทยาลัยไหมครับ?",
             chatError: "ขออภัย ระบบขัดข้อง",
             askSchedule: "ถามเรื่องตารางสอน...",
-            poweredBy: "Powered by Gemini Pro",
+            poweredBy: "Powered by Ollama AI (ฟรี)",
             chatProcessError: "เกิดข้อผิดพลาดในการประมวลผล",
 
             // Profile Page
@@ -301,6 +301,7 @@ export const LanguageProvider = ({ children }) => {
             aiRecommendSuccess: "AI แนะนำสำเร็จ",
             aiRecommendMessage: "AI ได้แนะนำรายวิชาที่เหมาะสม",
             aiRecommendError: "AI ไม่สามารถแนะนำได้ในขณะนี้",
+            clearSelection: "ล้างค่าที่เลือก",
 
             // TableModal
             manualAddTitle: 'เพิ่มรายวิชา (Manual)',
@@ -353,6 +354,7 @@ export const LanguageProvider = ({ children }) => {
             action: 'จัดการ',
             item: 'รายการ',
             seq: 'ลำดับ',
+            orderIndex: 'ลำดับ',
             agentPlanning: 'วิเคราะห์เงื่อนไข',
             agentReasoning: 'วางแผนจัดตาราง',
             agentAction: 'ลงตารางสอน',
@@ -376,6 +378,89 @@ export const LanguageProvider = ({ children }) => {
             // Header
             adminRole: 'ผู้ดูแลระบบ',
             profile: 'ข้อมูลส่วนตัว',
+
+            // Tooltips
+            mute: 'ปิดเสียง',
+            unmute: 'เปิดเสียง',
+            voiceOn: 'สั่งงานด้วยเสียง',
+            voiceOff: 'ปิดสั่งงานเสียง',
+            handOn: 'ควบคุมด้วยมือ',
+            handOff: 'ปิดการควบคุมมือ',
+
+            // Sidebar New Keys
+            attendance: 'เช็คชื่อ',
+            aiComparison: 'เปรียบเทียบ AI',
+            issueReports: 'รายการแจ้งปัญหา',
+            reportIssue: 'แจ้งปัญหา',
+            settings: 'ตั้งค่า',
+            help: 'ช่วยเหลือ',
+            viewData: 'ดูข้อมูล',
+            addEdit: 'เพิ่ม/แก้ไข',
+            importExcel: 'นำเข้า Excel',
+
+            // Dashboard New Keys
+            roomUtilization: 'อัตราใช้ห้อง',
+            teachingLoad: 'ภาระงานครู',
+            teacherDaily: 'ชั่วโมงสอนวันนี้',
+            teacherWeekly: 'ชั่วโมงสอนสัปดาห์นี้',
+            teacherTerm: 'ชั่วโมงสอนภาคเรียนนี้',
+            teacherSubjects: 'รายวิชาที่รับผิดชอบ',
+            studentClassesToday: 'คาบเรียนวันนี้',
+            studentClassesWeek: 'คาบเรียนสัปดาห์นี้',
+            studentAttendance: 'อัตราเข้าเรียน',
+            studentSubjects: 'รายวิชาที่ลงทะเบียน',
+            clickToViewGraph: 'คลิกเพื่อดูกราฟ',
+            loadSampleDataTitle: '🚀 เริ่มต้นใช้งานระบบ',
+            loadSampleDataDesc: 'โหลดข้อมูลตัวอย่าง (3 แผนก, 10 ครู, 50 นักเรียน, 15 วิชา) เพื่อทดลองใช้งานระบบ',
+            loadSampleDataBtn: 'โหลดข้อมูลตัวอย่าง',
+            loadingSample: 'กำลังโหลด...',
+
+            // Report
+            reportTitle: 'แจ้งปัญหา / ข้อเสนอแนะ',
+            reportDesc: 'แจ้งปัญหาการใช้งานหรือเสนอแนะเพิ่มเติม',
+            typeBug: 'แจ้งปัญหา (Bug)',
+            typeFeature: 'เสนอแนะ (Feature)',
+            typeQuestion: 'สอบถาม (Question)',
+            alertFillRequired: 'กรุณากรอกหัวข้อและรายละเอียด',
+            sentSuccess: 'ส่งรายงานเรียบร้อยแล้ว!',
+            reportId: 'รหัสรายงาน',
+            newReport: 'ส่งรายงานใหม่',
+            typeLabel: 'ประเภท',
+            topicLabel: 'หัวข้อ',
+            topicPlaceholder: 'สรุปสั้นๆ (เช่น เข้าสู่ระบบไม่ได้)',
+            detailLabel: 'รายละเอียด',
+            detailPlaceholder: 'อธิบายปัญหาที่พบ หรือสิ่งที่ต้องการเสนอแนะ...',
+            sendReportBtn: 'ส่งรายงาน',
+
+            // Settings
+            settingsTitle: 'ตั้งค่า Dashboard',
+            settingsDesc: 'ปรับแต่งการแสดงผลตามต้องการ',
+            resetConfig: 'รีเซ็ตการตั้งค่าทั้งหมด?',
+            resetBtn: 'รีเซ็ต',
+            saved: 'บันทึกแล้ว!',
+            // Shapes
+            shapeRounded: 'มุมมน',
+            shapePill: 'แคปซูล',
+            shapeSharp: 'มุมเหลี่ยม',
+            shapeSoft: 'มุมนุ่ม',
+            // Styles
+            styleGradient: 'ไล่สี',
+            styleSolid: 'สีเดียว',
+            styleGlass: 'กระจก',
+            styleOutline: 'เส้นขอบ',
+            // Colors
+            colorBlue: 'น้ำเงิน',
+            colorEmerald: 'เขียว',
+            colorViolet: 'ม่วง',
+            colorAmber: 'เหลือง',
+            colorRose: 'ชมพู',
+            colorCyan: 'ฟ้า',
+            colorOrange: 'ส้ม',
+            colorPink: 'ชมพูอ่อน',
+            colorRed: 'แดง',
+            colorIndigo: 'คราม',
+            colorTeal: 'เทา',
+            colorLime: 'เขียวอ่อน',
         },
         en: {
             welcome: "Welcome",
@@ -388,6 +473,66 @@ export const LanguageProvider = ({ children }) => {
             teachers: "Teachers",
             subjects: "Subjects",
             rooms: "Rooms",
+
+            // Tooltips
+            mute: 'Mute',
+            unmute: 'Unmute',
+            voiceOn: 'Voice Control On',
+            voiceOff: 'Voice Control Off',
+            handOn: 'Hand Control On',
+            handOff: 'Hand Control Off',
+
+            // Header
+            adminRole: 'Administrator',
+            profile: 'Profile',
+
+            // Report
+            reportTitle: 'Report Issue / Feedback',
+            reportDesc: 'Report bugs or send feedback',
+            typeBug: 'Bug Report',
+            typeFeature: 'Feature Request',
+            typeQuestion: 'General Question',
+            alertFillRequired: 'Please fill in title and description',
+            sentSuccess: 'Report Sent Successfully!',
+            reportId: 'Report ID',
+            newReport: 'Send New Report',
+            typeLabel: 'Type',
+            topicLabel: 'Topic',
+            topicPlaceholder: 'Brief summary (e.g. Cannot login)',
+            detailLabel: 'Description',
+            detailPlaceholder: 'Describe the issue or feedback...',
+            sendReportBtn: 'Send Report',
+
+            // Settings
+            settingsTitle: 'Dashboard Settings',
+            settingsDesc: 'Customize your dashboard view',
+            resetConfig: 'Reset all settings?',
+            resetBtn: 'Reset',
+            saved: 'Saved!',
+
+            // Shapes
+            shapeRounded: 'Rounded',
+            shapePill: 'Pill',
+            shapeSharp: 'Sharp',
+            shapeSoft: 'Soft',
+            // Styles
+            styleGradient: 'Gradient',
+            styleSolid: 'Solid',
+            styleGlass: 'Glass',
+            styleOutline: 'Outline',
+            // Colors
+            colorBlue: 'Blue',
+            colorEmerald: 'Emerald',
+            colorViolet: 'Violet',
+            colorAmber: 'Amber',
+            colorRose: 'Rose',
+            colorCyan: 'Cyan',
+            colorOrange: 'Orange',
+            colorPink: 'Pink',
+            colorRed: 'Red',
+            colorIndigo: 'Indigo',
+            colorTeal: 'Teal',
+            colorLime: 'Lime',
             departments: "Departments",
             users: "Users",
             logout: "Logout",
@@ -425,7 +570,7 @@ export const LanguageProvider = ({ children }) => {
             chatWelcome: "Hello! I'm your AI Assistant 🤖\nHow can I help you with scheduling or college data?",
             chatError: "Sorry, system error.",
             askSchedule: "Ask about schedule...",
-            poweredBy: "Powered by Gemini Pro",
+            poweredBy: "Powered by Ollama AI (ฟรี)",
             chatProcessError: "Processing error occurred",
 
             // Profile Page
@@ -636,6 +781,7 @@ export const LanguageProvider = ({ children }) => {
             aiRecommendSuccess: "AI Recommendation Success",
             aiRecommendMessage: "AI has recommended suitable subjects",
             aiRecommendError: "AI cannot recommend at this time",
+            clearSelection: "Clear Selection",
 
             // TableModal
             manualAddTitle: 'Add Subject (Manual)',
@@ -688,6 +834,7 @@ export const LanguageProvider = ({ children }) => {
             action: 'Action',
             item: 'Item',
             seq: 'No.',
+            orderIndex: 'No.',
             agentPlanning: 'Analyzing Constraints',
             agentReasoning: 'Designing Strategy',
             agentAction: 'Assigning Schedule',
@@ -711,6 +858,34 @@ export const LanguageProvider = ({ children }) => {
             // Header
             adminRole: 'Administrator',
             profile: 'Profile',
+
+            // Sidebar New Keys
+            attendance: 'Attendance',
+            aiComparison: 'AI Comparison',
+            issueReports: 'Issue Reports',
+            reportIssue: 'Report Issue',
+            settings: 'Settings',
+            help: 'Help',
+            viewData: 'View Data',
+            addEdit: 'Add/Edit',
+            importExcel: 'Import Excel',
+
+            // Dashboard New Keys
+            roomUtilization: 'Room Utilization',
+            teachingLoad: 'Teaching Load',
+            teacherDaily: 'Daily Hours',
+            teacherWeekly: 'Weekly Hours',
+            teacherTerm: 'Term Hours',
+            teacherSubjects: 'My Subjects',
+            studentClassesToday: 'Classes Today',
+            studentClassesWeek: 'Classes Weekly',
+            studentAttendance: 'Attendance Rate',
+            studentSubjects: 'Enrolled Subjects',
+            clickToViewGraph: 'Click to view graph',
+            loadSampleDataTitle: '🚀 Get Started',
+            loadSampleDataDesc: 'Load sample data (3 Depts, 10 Teachers, 50 Students, 15 Subjects) to test the system',
+            loadSampleDataBtn: 'Load Sample Data',
+            loadingSample: 'Loading...',
         },
         zh: {
             welcome: "欢迎",
@@ -786,6 +961,7 @@ export const LanguageProvider = ({ children }) => {
             add: "添加",
             search: "搜索",
             clear: "清除",
+            clearSelection: "清除选择",
             action: "操作",
             // StatCards
             totalStudents: "学生总数",
@@ -823,7 +999,7 @@ export const LanguageProvider = ({ children }) => {
             chatWelcome: "你好！我是你的 AI 助手 🤖\n有什么我可以帮你安排课程表或学院数据的吗？",
             chatError: "抱歉，系统错误",
             askSchedule: "询问课程表...",
-            poweredBy: "Powered by Gemini Pro",
+            poweredBy: "Powered by Ollama AI (ฟรี)",
             chatProcessError: "处理时发生错误",
 
             // Profile Page
@@ -990,6 +1166,91 @@ export const LanguageProvider = ({ children }) => {
             adminRole: "管理员",
             profile: "个人资料",
             typeMessage: "输入消息...",
+
+            // Sidebar New Keys
+            attendance: '考勤',
+            schedule: '课程表',
+            aiComparison: 'AI 对比',
+            issueReports: '问题报告',
+            reportIssue: '报告问题',
+            settings: '设置',
+            help: '帮助',
+            viewData: '查看数据',
+            addEdit: '添加/编辑',
+            importExcel: '导入 Excel',
+
+            // Dashboard New Keys
+            roomUtilization: '教室利用率',
+            teachingLoad: '教学工作量',
+            teacherDaily: '今日课时',
+            teacherWeekly: '本周课时',
+            teacherTerm: '本学期课时',
+            teacherSubjects: '负责科目',
+            studentClassesToday: '今日课程',
+            studentClassesWeek: '本周课程',
+            studentAttendance: '出勤率',
+            studentSubjects: '已选科目',
+            clickToViewGraph: '点击查看图表',
+            loadSampleDataTitle: '🚀 开始使用',
+            loadSampleDataDesc: '加载示例数据（3个系，10名教师，50名学生，15门课程）以测试系统',
+            loadSampleDataBtn: '加载示例数据',
+            loadingSample: '加载中...',
+
+            // Tooltips
+            mute: '静音',
+            unmute: '取消静音',
+            voiceOn: '语音控制开启',
+            voiceOff: '语音控制关闭',
+            handOn: '手势控制开启',
+            handOff: '手势控制关闭',
+
+            // Report
+            reportTitle: '报告问题 / 反馈',
+            reportDesc: '报告错误或发送反馈',
+            typeBug: '错误报告',
+            typeFeature: '功能请求',
+            typeQuestion: '一般问题',
+            alertFillRequired: '请填写标题和描述',
+            sentSuccess: '报告发送成功！',
+            reportId: '报告ID',
+            newReport: '发送新报告',
+            typeLabel: '类型',
+            topicLabel: '主题',
+            topicPlaceholder: '简要摘要（例如无法登录）',
+            detailLabel: '描述',
+            detailPlaceholder: '描述问题或反馈...',
+            sendReportBtn: '发送报告',
+
+            // Settings
+            settingsTitle: '仪表板设置',
+            settingsDesc: '自定义您的仪表板视图',
+            resetConfig: '重置所有设置？',
+            resetBtn: '重置',
+            saved: '已保存！',
+
+            // Shapes
+            shapeRounded: '圆角',
+            shapePill: '胶囊',
+            shapeSharp: '直角',
+            shapeSoft: '柔和',
+            // Styles
+            styleGradient: '渐变',
+            styleSolid: '纯色',
+            styleGlass: '玻璃',
+            styleOutline: '轮廓',
+            // Colors
+            colorBlue: '蓝色',
+            colorEmerald: '祖母绿',
+            colorViolet: '紫罗兰',
+            colorAmber: '琥珀色',
+            colorRose: '玫瑰红',
+            colorCyan: '青色',
+            colorOrange: '橙色',
+            colorPink: '粉色',
+            colorRed: '红色',
+            colorIndigo: '靛蓝',
+            colorTeal: '青色',
+            colorLime: '酸橙',
         },
         ja: {
             welcome: "ようこそ",
@@ -1015,6 +1276,7 @@ export const LanguageProvider = ({ children }) => {
             add: "追加",
             search: "検索",
             clear: "クリア",
+            clearSelection: "選択をクリア",
             action: "操作",
             // StatCards
             totalStudents: "学生総数",
@@ -1052,7 +1314,7 @@ export const LanguageProvider = ({ children }) => {
             chatWelcome: "こんにちは！AIアシスタントです 🤖\n時間割や大学のデータについて何かお手伝いできますか？",
             chatError: "申し訳ありません、システムエラーです",
             askSchedule: "時間割について聞く...",
-            poweredBy: "Powered by Gemini Pro",
+            poweredBy: "Powered by Ollama AI (ฟรี)",
             chatProcessError: "処理中にエラーが発生しました",
 
             // Profile Page
@@ -1242,6 +1504,94 @@ export const LanguageProvider = ({ children }) => {
             fullname: "フルネーム",
             role: "役割",
             studentCount: "学生数",
+
+            // Header
+            adminRole: '管理者',
+            profile: 'プロフィール',
+
+            // Tooltips
+            mute: 'ミュート',
+            unmute: 'ミュート解除',
+            voiceOn: '音声操作オン',
+            voiceOff: '音声操作オフ',
+            handOn: 'ハンド操作オン',
+            handOff: 'ハンド操作オフ',
+
+            // Report
+            reportTitle: '問題報告 / フィードバック',
+            reportDesc: 'バグ報告やフィードバックを送信',
+            typeBug: 'バグ報告',
+            typeFeature: '機能リクエスト',
+            typeQuestion: '一般的な質問',
+            alertFillRequired: 'タイトルと詳細を入力してください',
+            sentSuccess: '報告が送信されました！',
+            reportId: '報告ID',
+            newReport: '新しい報告を送信',
+            typeLabel: 'タイプ',
+            topicLabel: 'トピック',
+            topicPlaceholder: '短い要約（例：ログインできない）',
+            detailLabel: '詳細',
+            detailPlaceholder: '問題やフィードバックを説明してください...',
+            sendReportBtn: '報告を送信',
+
+            // Settings
+            settingsTitle: 'ダッシュボード設定',
+            settingsDesc: 'ダッシュボードの表示をカスタマイズ',
+            resetConfig: 'すべての設定をリセットしますか？',
+            resetBtn: 'リセット',
+            saved: '保存しました！',
+
+            // Shapes
+            shapeRounded: '丸角',
+            shapePill: 'カプセル',
+            shapeSharp: '直角',
+            shapeSoft: 'ソフト',
+            // Styles
+            styleGradient: 'グラデーション',
+            styleSolid: '単色',
+            styleGlass: 'ガラス',
+            styleOutline: 'アウトライン',
+            // Colors
+            colorBlue: '青',
+            colorEmerald: 'エメラルド',
+            colorViolet: '紫',
+            colorAmber: '琥珀',
+            colorRose: 'ローズ',
+            colorCyan: 'シアン',
+            colorOrange: 'オレンジ',
+            colorPink: 'ピンク',
+            colorRed: '赤',
+            colorIndigo: 'インディゴ',
+            colorTeal: 'ティール',
+            colorLime: 'ライム',
+
+            // Sidebar New Keys
+            attendance: '出席',
+            aiComparison: 'AI比較',
+            issueReports: '問題レポート',
+            reportIssue: '問題を報告',
+            settings: '設定',
+            help: 'ヘルプ',
+            viewData: 'データ表示',
+            addEdit: '追加/編集',
+            importExcel: 'Excelインポート',
+
+            // Dashboard New Keys
+            roomUtilization: '教室利用率',
+            teachingLoad: '教員負荷',
+            teacherDaily: '今日',
+            teacherWeekly: '週間',
+            teacherTerm: '学期',
+            teacherSubjects: '担当科目',
+            studentClassesToday: '今日の授業',
+            studentClassesWeek: '週間の授業',
+            studentAttendance: '出席率',
+            studentSubjects: '履修科目',
+            clickToViewGraph: 'クリックしてグラフを表示',
+            loadSampleDataTitle: '🚀 始める',
+            loadSampleDataDesc: 'サンプルデータをロードしてシステムをテスト',
+            loadSampleDataBtn: 'サンプルデータをロード',
+            loadingSample: 'ロード中...',
             totalHours: "合計時間",
             time: "時間",
             item: "項目",
@@ -1269,6 +1619,34 @@ export const LanguageProvider = ({ children }) => {
             adminRole: "管理者",
             profile: "プロフィール",
             typeMessage: "メッセージを入力...",
+
+            // Sidebar New Keys
+            attendance: '出席',
+            aiComparison: 'AI比較',
+            issueReports: '問題レポート',
+            reportIssue: '問題を報告',
+            settings: '設定',
+            help: 'ヘルプ',
+            viewData: 'データ表示',
+            addEdit: '追加/編集',
+            importExcel: 'Excelインポート',
+
+            // Dashboard New Keys
+            roomUtilization: '教室稼働率',
+            teachingLoad: '教育負担',
+            teacherDaily: '今日の授業時間',
+            teacherWeekly: '今週の授業時間',
+            teacherTerm: '学期の授業時間',
+            teacherSubjects: '担当科目',
+            studentClassesToday: '今日の授業',
+            studentClassesWeek: '今週の授業',
+            studentAttendance: '出席率',
+            studentSubjects: '登録科目',
+            clickToViewGraph: 'クリックしてグラフを表示',
+            loadSampleDataTitle: '🚀 利用開始',
+            loadSampleDataDesc: 'サンプルデータ（3学部、教師10名、学生50名、15科目）を読み込んでシステムをテストします',
+            loadSampleDataBtn: 'サンプルデータを読み込む',
+            loadingSample: '読み込み中...',
         },
         ko: {
             welcome: "환영합니다",
@@ -1292,6 +1670,7 @@ export const LanguageProvider = ({ children }) => {
             add: "추가",
             search: "검색",
             clear: "지우기",
+            clearSelection: "선택 해제",
             action: "동작",
             // StatCards
             totalStudents: "총 학생 수",
@@ -1329,7 +1708,7 @@ export const LanguageProvider = ({ children }) => {
             chatWelcome: "안녕하세요! AI 어시스턴트입니다 🤖\n시간표나 대학 데이터에 대해 도와드릴까요?",
             chatError: "죄송합니다, 시스템 오류입니다",
             askSchedule: "시간표에 대해 질문...",
-            poweredBy: "Powered by Gemini Pro",
+            poweredBy: "Powered by Ollama AI (ฟรี)",
             chatProcessError: "처리 중 오류 발생",
 
             // Profile Page
@@ -1546,6 +1925,91 @@ export const LanguageProvider = ({ children }) => {
             adminRole: "관리자",
             profile: "프로필",
             typeMessage: "메시지 입력...",
+
+            // Tooltips
+            mute: '음소거',
+            unmute: '음소거 해제',
+            voiceOn: '음성 제어 켜기',
+            voiceOff: '음성 제어 끄기',
+            handOn: '손 제어 켜기',
+            handOff: '손 제어 끄기',
+
+            // Report
+            reportTitle: '문제 신고 / 피드백',
+            reportDesc: '버그 신고 또는 피드백 보내기',
+            typeBug: '버그 신고',
+            typeFeature: '기능 요청',
+            typeQuestion: '일반 질문',
+            alertFillRequired: '제목과 내용을 입력해주세요',
+            sentSuccess: '신고가 성공적으로 전송되었습니다!',
+            reportId: '신고 ID',
+            newReport: '새 신고 보내기',
+            typeLabel: '유형',
+            topicLabel: '주제',
+            topicPlaceholder: '간단한 요약 (예: 로그인 불가)',
+            detailLabel: '내용',
+            detailPlaceholder: '문제 또는 피드백을 설명해주세요...',
+            sendReportBtn: '신고 보내기',
+
+            // Settings
+            settingsTitle: '대시보드 설정',
+            settingsDesc: '대시보드 화면 사용자 정의',
+            resetConfig: '모든 설정을 초기화하시겠습니까?',
+            resetBtn: '초기화',
+            saved: '저장됨!',
+
+            // Shapes
+            shapeRounded: '둥근 모서리',
+            shapePill: '캡슐',
+            shapeSharp: '직각',
+            shapeSoft: '부드러운',
+            // Styles
+            styleGradient: '그라데이션',
+            styleSolid: '단색',
+            styleGlass: '유리',
+            styleOutline: '외곽선',
+            // Colors
+            colorBlue: '파랑',
+            colorEmerald: '에메랄드',
+            colorViolet: '보라',
+            colorAmber: '호박색',
+            colorRose: '장미',
+            colorCyan: '청록',
+            colorOrange: '주황',
+            colorPink: '분홍',
+            colorRed: '빨강',
+            colorIndigo: '남색',
+            colorTeal: '청록',
+            colorLime: '라임',
+
+            // Sidebar New Keys
+            attendance: '출석',
+            schedule: '시간표',
+            aiComparison: 'AI 비교',
+            issueReports: '문제 보고서',
+            reportIssue: '문제 신고',
+            settings: '설정',
+            help: '도움말',
+            viewData: '데이터 보기',
+            addEdit: '추가/편집',
+            importExcel: 'Excel 가져오기',
+
+            // Dashboard New Keys
+            roomUtilization: '강의실 사용률',
+            teachingLoad: '수업 부담',
+            teacherDaily: '오늘 수업',
+            teacherWeekly: '주간 수업',
+            teacherTerm: '학기 수업',
+            teacherSubjects: '담당 과목',
+            studentClassesToday: '오늘의 수업',
+            studentClassesWeek: '주간 수업',
+            studentAttendance: '출석률',
+            studentSubjects: '수강 과목',
+            clickToViewGraph: '그래프 보기',
+            loadSampleDataTitle: '🚀 시작하기',
+            loadSampleDataDesc: '샘플 데이터를 로드하여 시스템 테스트',
+            loadSampleDataBtn: '샘플 데이터 로드',
+            loadingSample: '로딩 중...',
         }
     };
 

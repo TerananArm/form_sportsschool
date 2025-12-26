@@ -3,9 +3,9 @@ import { Prompt, Noto_Sans_Thai, Noto_Sans_SC, Noto_Sans_JP, Noto_Sans_KR } from
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from './context/LanguageContext';
-import { SoundProvider } from './context/SoundContext';
+
 import AuthProvider from './context/AuthProvider';
-import ScrollProgress from './components/ScrollProgress';
+
 import PageTransition from './components/PageTransition';
 
 const prompt = Prompt({
@@ -55,17 +55,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" suppressHydrationWarning>
-      <body className={`${prompt.variable} ${notoSansThai.variable} ${notoSansSC.variable} ${notoSansJP.variable} ${notoSansKR.variable} font-sans antialiased bg-gray-50 dark:bg-[#050505] text-slate-900 dark:text-slate-100`}>
+      <body id="root-layout" className={`${prompt.variable} ${notoSansThai.variable} ${notoSansSC.variable} ${notoSansJP.variable} ${notoSansKR.variable} font-sans antialiased bg-gray-50 dark:bg-[#050505] text-slate-900 dark:text-slate-100`}>
         <ThemeProvider>
           <LanguageProvider>
-            <SoundProvider>
-              <AuthProvider>
-                <ScrollProgress />
-                <PageTransition>
-                  {children}
-                </PageTransition>
-              </AuthProvider>
-            </SoundProvider>
+            <AuthProvider>
+
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

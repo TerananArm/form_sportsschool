@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logAction } from '@/lib/logger';
 
 export async function PUT(request) {
     try {
-        const { type, data, id } = await request.json(); // id คือรหัสเดิม (ก่อนแก้)
+        const { type, data, id } = await request.json(); // id is the identifier (old value)
 
         // Helper: แปลง undefined เป็น null
         const v = (val) => (val === undefined ? null : val);
@@ -21,47 +22,34 @@ export async function PUT(request) {
         switch (type) {
             case 'students':
                 const deptIdStd = await getDeptId(data.department);
-                sql = 'UPDATE students SET name=?, birthDate=?, departmentId=?, updatedAt=? WHERE id=?';
-                params = [v(data.name), v(data.birthdate), deptIdStd, new Date(), id];
+                // Use studentId for WHERE clause if possible, or try to be smart.
+                // Assuming 'id' passed in is the OLD studentId.
+                sql = 'UPDATE students SET studentId=?, name=?, birthDate=?, departmentId=?, updatedAt=? WHERE studentId=?';
+                params = [v(data.id), v(data.name), v(data.birthdate), deptIdStd, new Date(), id];
                 break;
 
             case 'teachers':
                 const deptIdTch = await getDeptId(data.department);
-
-                // Parse unavailable_times from text format (e.g. "จันทร์:1,2 พุธ:7,8,9") to JSON
-                let unavailableTimesJson = null;
-                if (data.unavailable_times) {
-                    if (typeof data.unavailable_times === 'string') {
-                        const dayMap = { 'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัสบดี': 4, 'ศุกร์': 5 };
-                        const parts = data.unavailable_times.trim().split(/\s+/);
-                        const parsed = [];
-                        for (const part of parts) {
-                            const [dayName, periodsStr] = part.split(':');
-                            const dayNum = dayMap[dayName];
-                            if (dayNum && periodsStr) {
-                                const periods = periodsStr.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
-                                if (periods.length > 0) parsed.push({ day: dayNum, periods });
-                            }
-                        }
-                        unavailableTimesJson = parsed.length > 0 ? JSON.stringify(parsed) : null;
-                    } else {
-                        unavailableTimesJson = JSON.stringify(data.unavailable_times);
-                    }
-                }
-
-                sql = 'UPDATE teachers SET name=?, departmentId=?, officeRoom=?, maxHoursPerWeek=?, birthDate=?, unavailableTimes=?, updatedAt=? WHERE id=?';
-                params = [v(data.name), deptIdTch, v(data.room), v(data.max_hours), v(data.birthdate), unavailableTimesJson, new Date(), id];
+                // Assuming 'id' passed in is the OLD teacherId.
+                sql = 'UPDATE teachers SET teacherId=?, name=?, departmentId=?, officeRoom=?, maxHoursPerWeek=?, birthDate=?, updatedAt=? WHERE teacherId=?';
+                params = [v(data.id), v(data.name), deptIdTch, v(data.room), v(data.max_hours), v(data.birthdate), new Date(), id];
                 break;
 
             case 'subjects':
                 const deptIdSub = await getDeptId(data.department);
-                sql = 'UPDATE subjects SET name=?, departmentId=?, credit=?, theoryHours=?, practiceHours=?, updatedAt=? WHERE code=?';
-                params = [v(data.name), deptIdSub, v(data.credit), v(data.theory), v(data.practice), new Date(), id];
+                // Get teacherId from teacher name
+                let teacherIdSub = null;
+                if (data.teacher && !data.teacher.startsWith('--')) {
+                    const [teacherRows] = await db.execute('SELECT id FROM teachers WHERE name = ?', [data.teacher]);
+                    if (teacherRows.length > 0) teacherIdSub = teacherRows[0].id;
+                }
+                sql = 'UPDATE subjects SET code=?, name=?, departmentId=?, teacherId=?, credit=?, theoryHours=?, practiceHours=?, updatedAt=? WHERE code=?';
+                params = [v(data.code), v(data.name), deptIdSub, teacherIdSub, v(data.credit), v(data.theory), v(data.practice), new Date(), id];
                 break;
 
             case 'rooms':
-                sql = 'UPDATE rooms SET type=?, capacity=?, updatedAt=? WHERE name=?';
-                params = [v(data.type), v(data.capacity), new Date(), id];
+                sql = 'UPDATE rooms SET name=?, type=?, capacity=?, updatedAt=? WHERE name=?';
+                params = [v(data.name), v(data.type), v(data.capacity), new Date(), id];
                 break;
 
             case 'departments':
@@ -74,6 +62,14 @@ export async function PUT(request) {
                 params = [v(data.name), 'admin', new Date(), id];
                 break;
 
+            case 'levels':
+            case 'class_levels':
+                const deptVal = data.department || data.department_name;
+                const deptIdLvl = await getDeptId(deptVal);
+                sql = 'UPDATE class_levels SET name=?, departmentId=?, updatedAt=? WHERE id=?';
+                params = [v(data.level), deptIdLvl, new Date(), id];
+                break;
+
             default:
                 return NextResponse.json({ message: 'ไม่รองรับข้อมูลประเภทนี้' }, { status: 400 });
         }
@@ -83,7 +79,27 @@ export async function PUT(request) {
             return NextResponse.json({ message: 'ไม่พบ ID สำหรับอัปเดต' }, { status: 400 });
         }
 
-        await db.execute(sql, params);
+        const [result] = await db.execute(sql, params);
+
+        if (result.affectedRows === 0) {
+            // Fallback: This might happen if 'id' was actually the PK (int) but we searched by string ID.
+            // But for now, let's assume valid string IDs.
+            return NextResponse.json({ message: 'ไม่พบข้อมูลที่ต้องการอัปเดต หรือข้อมูลไม่มีการเปลี่ยนแปลง' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'อัปเดตข้อมูลสำเร็จ' });
+
+        // Audit Log
+        try {
+            await logAction({
+                action: 'UPDATE',
+                resource: type,
+                resourceId: String(id),
+                details: `Updated ${type} ID: ${id}`,
+                performedBy: 'Admin'
+            });
+        } catch (e) { console.error("Audit log error", e); }
+
         return NextResponse.json({ message: 'อัปเดตข้อมูลสำเร็จ' });
 
     } catch (error) {

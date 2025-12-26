@@ -119,7 +119,9 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                 confirmButtonColor: '#3b82f6'
             });
 
-            window.location.reload();
+            // Refresh data without full page reload
+            router.refresh();
+            onClose();
         } catch (error) {
             console.error(error);
             // Show Error Popup
@@ -226,7 +228,9 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                 background: isDarkMode ? '#1e293b' : '#fff',
                 color: isDarkMode ? '#fff' : '#000'
             });
-            window.location.reload();
+            // Refresh data without full page reload
+            router.refresh();
+            onClose();
         } catch (error) {
             await Swal.fire({
                 icon: 'error',
@@ -359,7 +363,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
             Swal.fire({
                 icon: 'error',
                 title: t('error'),
-                text: 'Please upload only .xlsx or .xls files',
+                text: 'กรุณาอัปโหลดไฟล์นามสกุล .xlsx หรือ .xls เท่านั้น',
                 background: isDarkMode ? '#1e293b' : '#fff',
                 color: isDarkMode ? '#fff' : '#000'
             });
@@ -448,7 +452,9 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                     color: isDarkMode ? '#fff' : '#000'
                 });
 
-                window.location.reload();
+                // Refresh data without full page reload
+                router.refresh();
+                onClose();
             } catch (error) {
                 console.error(error);
                 Swal.fire({
@@ -559,7 +565,9 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                     background: isDarkMode ? '#1e293b' : '#fff',
                     color: isDarkMode ? '#fff' : '#000'
                 });
-                window.location.reload();
+                // Refresh data without full page reload
+                router.refresh();
+                onClose();
             }
 
         } catch (error) {
@@ -748,7 +756,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                                     <th className={`px-4 py-4 rounded-l-xl text-center w-14 ${tableHeaderBg}`}>
                                         <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-black cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} />
                                     </th>
-                                    <th className={`px-4 py-4 text-center w-16 ${tableHeaderBg}`}>{t('seq')}</th>
+                                    <th className={`px-4 py-4 text-center w-16 ${tableHeaderBg}`}>{t('orderIndex')}</th>
                                     {columns.map((col, idx) => (<th key={idx} className={`px-4 py-4 ${tableHeaderBg}`}>{col.l}</th>))}
                                     <th className={`px-4 py-4 text-center rounded-r-xl w-24 ${tableHeaderBg}`}>{t('action')}</th>
                                 </tr>
@@ -828,9 +836,57 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                                 ))}
                             </div>
                             <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-dashed border-slate-200 dark:border-white/10">
+                                {/* Mock Data Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const mock = {
+                                            students: {
+                                                id: 'S' + Math.floor(Math.random() * 10000), // Updated to S+Number
+                                                name: 'นักเรียน ตัวอย่าง',
+                                                dept: 'เทคโนโลยีสารสนเทศ',
+                                                level: 'ปวช.1',
+                                                birthdate: new Date('2005-01-01')
+                                            },
+                                            teachers: {
+                                                id: 'T' + Math.floor(Math.random() * 1000),
+                                                name: 'ครู ตัวอย่าง',
+                                                dept: 'เทคโนโลยีสารสนเทศ',
+                                                room: '101',
+                                                max_hours: 20,
+                                                birthdate: new Date('1980-01-01')
+                                            },
+                                            subjects: {
+                                                code: '3000-' + Math.floor(Math.random() * 9999),
+                                                name: 'วิชา ตัวอย่าง',
+                                                dept: 'เทคโนโลยีสารสนเทศ',
+                                                credit: 3,
+                                                theory_hours: 2,
+                                                practice_hours: 2
+                                            },
+                                            rooms: {
+                                                name: 'Room ' + Math.floor(Math.random() * 100),
+                                                type: 'Lecture',
+                                                capacity: 40
+                                            },
+                                            departments: {
+                                                name: 'แผนก ' + Math.floor(Math.random() * 100)
+                                            },
+                                            class_levels: {
+                                                level: 'Z' + Math.floor(Math.random() * 10),
+                                                department_name: 'เทคโนโลยีสารสนเทศ'
+                                            }
+                                        }[type];
+
+                                        if (mock) setFormData({ ...formData, ...mock });
+                                    }}
+                                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border ${isDarkMode ? 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10' : 'border-purple-200 text-purple-600 hover:bg-purple-50'}`}
+                                >
+                                    ✨ ตัวอย่าง
+                                </button>
                                 <button type="button" onClick={() => setView('list')} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${isDarkMode ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}>{t('cancel')}</button>
                                 <button type="submit" disabled={isLoading} className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {isLoading ? 'Saving...' : t('save')}
+                                    {isLoading ? 'กำลังบันทึก...' : t('save')}
                                 </button>
                             </div>
                         </form>
@@ -855,7 +911,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                 isOpen={availabilityModalOpen}
                 onClose={() => { setAvailabilityModalOpen(false); setSelectedTeacher(null); }}
                 teacher={selectedTeacher}
-                onSave={() => window.location.reload()}
+                onSave={() => { router.refresh(); onClose(); }}
             />
         </div>,
         document.body

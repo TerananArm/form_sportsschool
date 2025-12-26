@@ -27,7 +27,8 @@ export function ThemeProvider({ children }) {
     if (savedTheme) {
       applyTheme(savedTheme === 'dark');
     } else {
-      applyTheme(systemMedia.matches);
+      // Default to light mode as requested
+      applyTheme(false);
     }
 
     // Listener for System Changes (only if no user preference)
@@ -50,6 +51,10 @@ export function ThemeProvider({ children }) {
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
+
+    // Disable transitions temporarily to prevent lag/flash effect
+    document.documentElement.classList.add('no-transitions');
+
     if (newMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -57,6 +62,11 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
+
+    // Re-enable transitions after a short microtask
+    setTimeout(() => {
+      document.documentElement.classList.remove('no-transitions');
+    }, 0);
   };
 
   return (
